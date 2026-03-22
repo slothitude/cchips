@@ -2,9 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **📖 Read ONBOARDING.md for full capability documentation**
+
 ## Project Overview
 
 CChips - Docker container deployment for Claude Code Agent. A self-contained environment that provides Claude Code CLI with OpenAI-compatible API wrapper, web terminal access, and multiple MCP servers.
+
+## Your Capabilities
+
+As Claude Code running in CChips, you have access to:
+
+### 🔍 Web Search
+- **SearXNG**: `http://localhost:8888/search?q=query&format=json` or through nginx at `/search/`
+- **MCP**: Use `searxng` or `brave-search` MCP servers
+
+### 📁 File Access
+- **Direct**: Read/write to `/home/claude/projects/`
+- **MCP**: Use `filesystem` MCP server for file operations
+- **External**: SSH (port 22) or Samba (`\\localhost\projects`)
+
+### 🤖 Self-Reference
+- **MCP**: Use `claude-agent-self` to call yourself as a sub-agent
+- **API**: POST to `http://localhost:5001/v1/agent/execute`
+
+### 🔌 MCP Servers
+- `filesystem` - File operations
+- `github` - GitHub API (set GITHUB_TOKEN)
+- `searxng` - Local web search
+- `memory` - Persistent storage
+- `claude-agent-self` - Recursive agent calls
 
 ## Commands
 
