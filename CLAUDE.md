@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Docker container deployment for Claude Code Agent - a self-contained environment that provides Claude Code CLI with OpenAI-compatible API wrapper, web terminal access, and multiple MCP servers.
+CChips - Docker container deployment for Claude Code Agent. A self-contained environment that provides Claude Code CLI with OpenAI-compatible API wrapper, web terminal access, and multiple MCP servers.
 
 ## Commands
 

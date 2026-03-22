@@ -1,4 +1,4 @@
-# Claude Code Agent - Single Port Deployment
+# CChips - Claude Code Agent - Single Port Deployment
 
 All services accessible through **one port** via nginx reverse proxy.
 
