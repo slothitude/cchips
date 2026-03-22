@@ -13,6 +13,9 @@ if [ ! -f /home/claude/webapps/flask/app.py ]; then
     cp -r /opt/webapps/flask/* /home/claude/webapps/flask/
 fi
 
+# Always copy orchestrator.py (new file that might be missing from volume)
+cp /opt/webapps/flask/orchestrator.py /home/claude/webapps/flask/ 2>/dev/null || true
+
 # Copy mcp-servers.json if it doesn't exist
 if [ ! -f /home/claude/.claude/mcp-servers.json ]; then
     cp /opt/claude-config/mcp-servers.json /home/claude/.claude/ 2>/dev/null || true

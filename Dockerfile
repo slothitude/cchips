@@ -58,7 +58,8 @@ RUN pip3 install --break-system-packages \
     flask-cors \
     flask-socketio \
     gunicorn \
-    uvicorn
+    uvicorn \
+    websocket-client
 
 # Install Poetry for claude-code-openai-wrapper
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
@@ -132,6 +133,7 @@ COPY entrypoint.sh /entrypoint.sh
 COPY webapps/flask/app.py /opt/webapps/flask/app.py
 COPY webapps/flask/agent_api.py /opt/webapps/flask/agent_api.py
 COPY webapps/flask/agent_mcp.py /opt/webapps/flask/agent_mcp.py
+COPY webapps/flask/orchestrator.py /opt/webapps/flask/orchestrator.py
 COPY webapps/flask/subagent_config.json /opt/webapps/flask/subagent_config.json
 COPY webapps/flask/templates/index.html /opt/webapps/flask/templates/index.html
 COPY webapps/flask/static/css/style.css /opt/webapps/flask/static/css/style.css
@@ -139,7 +141,8 @@ COPY webapps/flask/static/css/style.css /opt/webapps/flask/static/css/style.css
 RUN chmod +x /entrypoint.sh /usr/local/bin/claude-setup.sh \
     && chmod +x /opt/webapps/flask/app.py \
     && chmod +x /opt/webapps/flask/agent_api.py \
-    && chmod +x /opt/webapps/flask/agent_mcp.py
+    && chmod +x /opt/webapps/flask/agent_mcp.py \
+    && chmod +x /opt/webapps/flask/orchestrator.py
 
 # Create default Claude config directory
 RUN mkdir -p /home/claude/.claude \

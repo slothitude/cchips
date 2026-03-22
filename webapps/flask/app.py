@@ -13,6 +13,10 @@ import urllib.request
 import urllib.parse
 import socket
 import platform
+import threading
+
+# Import orchestrator
+from orchestrator import orchestrator
 
 app = Flask(__name__,
             template_folder='templates',
@@ -842,6 +846,201 @@ def open_project_in_claude(name):
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+
+# ============== Provider Registry API ==============
+
+@app.route('/api/registry/providers', methods=['GET'])
+def list_registered_providers():
+    """List all registered providers"""
+    return jsonify({
+        "providers": orchestrator.list_providers()
+    })
+
+
+@app.route('/api/registry/providers', methods=['POST'])
+def register_provider():
+    """Register a new provider"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    name = data.get("name")
+    if not name:
+        return jsonify({"error": "Provider name required"}), 400
+
+    # Remove name from config (it's the dict key)
+    config = {k: v for k, v in data.items() if k != "name"}
+
+    try:
+        provider = orchestrator.register_provider(name, config)
+        return jsonify({
+            "success": True,
+            "name": name,
+            "provider": provider.to_dict()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route('/api/registry/providers/<name>', methods=['GET'])
+def get_registered_provider(name):
+    """Get a registered provider"""
+    provider = orchestrator.get_provider(name)
+    if provider:
+        return jsonify({"name": name, "provider": provider.to_dict()})
+    return jsonify({"error": "Provider not found"}), 404
+
+
+@app.route('/api/registry/providers/<name>', methods=['DELETE'])
+def delete_registered_provider(name):
+    """Delete a registered provider"""
+    if orchestrator.delete_provider(name):
+        return jsonify({"success": True, "message": f"Provider '{name}' deleted"})
+    return jsonify({"error": "Provider not found"}), 404
+
+
+# ============== Orchestration API ==============
+
+@app.route('/api/orchestrate', methods=['POST'])
+def create_orchestration():
+    """Create and start a multi-agent workflow"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    mode = data.get("mode", "parallel")
+    tasks = data.get("tasks", [])
+    options = data.get("options", {})
+    workflow_id = data.get("workflow_id")
+
+    if not tasks:
+        return jsonify({"error": "No tasks provided"}), 400
+
+    # Validate mode
+    if mode not in ["parallel", "sequential", "dag"]:
+        return jsonify({"error": f"Invalid mode: {mode}. Must be 'parallel', 'sequential', or 'dag'"}), 400
+
+    # Validate tasks
+    for i, task in enumerate(tasks):
+        if "id" not in task:
+            return jsonify({"error": f"Task {i} missing 'id'"}), 400
+        if "prompt" not in task:
+            return jsonify({"error": f"Task '{task.get('id', i)}' missing 'prompt'"}), 400
+
+    try:
+        workflow = orchestrator.create_workflow(
+            mode=mode,
+            tasks=tasks,
+            options=options,
+            workflow_id=workflow_id
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Failed to create workflow: {str(e)}"}), 500
+
+    # Execute in background thread
+    thread = threading.Thread(
+        target=orchestrator.execute_workflow,
+        args=(workflow.id,)
+    )
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({
+        "workflow_id": workflow.id,
+        "status": workflow.status.value,
+        "created_at": workflow.created_at,
+        "mode": mode,
+        "task_count": len(tasks),
+        "status_url": f"/api/orchestrate/{workflow.id}"
+    })
+
+
+@app.route('/api/orchestrate', methods=['GET'])
+def list_orchestrations():
+    """List all workflows"""
+    workflows = orchestrator.list_workflows()
+    # Sort by created_at descending
+    workflows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return jsonify({
+        "count": len(workflows),
+        "workflows": workflows
+    })
+
+
+@app.route('/api/orchestrate/<workflow_id>', methods=['GET'])
+def get_orchestration(workflow_id):
+    """Get workflow status and results"""
+    workflow = orchestrator.get_workflow(workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    # Add merged output and artifacts for completed workflows
+    if workflow.get("status") == "completed":
+        workflow["merged_output"] = orchestrator.get_merged_output(workflow_id)
+        workflow["artifacts"] = orchestrator.get_artifacts(workflow_id)
+
+    return jsonify(workflow)
+
+
+@app.route('/api/orchestrate/<workflow_id>', methods=['DELETE'])
+def cancel_orchestration(workflow_id):
+    """Cancel a running workflow"""
+    if orchestrator.cancel_workflow(workflow_id):
+        return jsonify({
+            "success": True,
+            "message": "Workflow cancelled",
+            "workflow_id": workflow_id
+        })
+    return jsonify({
+        "error": "Cannot cancel workflow. It may not exist or not be running."
+    }), 400
+
+
+@app.route('/api/orchestrate/<workflow_id>/output', methods=['GET'])
+def get_orchestration_output(workflow_id):
+    """Get merged output from a workflow"""
+    workflow = orchestrator.get_workflow(workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    merged = orchestrator.get_merged_output(workflow_id)
+    return jsonify({
+        "workflow_id": workflow_id,
+        "status": workflow.get("status"),
+        "merged_output": merged
+    })
+
+
+@app.route('/api/orchestrate/<workflow_id>/artifacts', methods=['GET'])
+def get_orchestration_artifacts(workflow_id):
+    """Get artifacts from a workflow"""
+    workflow = orchestrator.get_workflow(workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    artifacts = orchestrator.get_artifacts(workflow_id)
+    return jsonify({
+        "workflow_id": workflow_id,
+        "artifacts": artifacts
+    })
+
+
+@app.route('/api/orchestrate/<workflow_id>', methods=['POST'])
+def delete_completed_orchestration(workflow_id):
+    """Delete a completed workflow from history"""
+    workflow = orchestrator.get_workflow(workflow_id)
+    if not workflow:
+        return jsonify({"error": "Workflow not found"}), 404
+
+    if workflow.get("status") in ["running", "pending"]:
+        return jsonify({"error": "Cannot delete running or pending workflow"}), 400
+
+    if orchestrator.delete_workflow(workflow_id):
+        return jsonify({"success": True, "message": "Workflow deleted"})
+    return jsonify({"error": "Failed to delete workflow"}), 500
 
 
 # ============== Static Routes ==============
