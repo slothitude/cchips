@@ -55,6 +55,33 @@ First launch opens the onboarding wizard to configure your LLM provider.
 
 ## 📖 API Reference
 
+### Project Management (`/api/`)
+
+```bash
+# Create new project
+curl -X POST http://localhost/api/project/create \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-app", "template": "python"}'
+
+# Upload files
+curl -X POST http://localhost/api/upload \
+  -F "file=@app.py" -F "project=my-app"
+
+# Upload and ask Claude
+curl -X POST http://localhost/api/upload-and-ask \
+  -F "files=@main.py" -F "prompt=Review for bugs"
+
+# List projects
+curl http://localhost/api/projects
+
+# Open project in Claude
+curl -X POST http://localhost/api/project/my-app/open \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Analyze this project"}'
+```
+
+**Templates:** `empty`, `python`, `node`, `web`
+
 ### OpenAI-Compatible (`/v1/`)
 
 ```bash

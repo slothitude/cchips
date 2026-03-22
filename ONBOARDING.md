@@ -269,6 +269,59 @@ curl -X POST http://localhost:5000/api/config \
 
 ## 📋 Common Workflows
 
+### Create New Project and Open in Claude
+
+```bash
+# Create project
+curl -X POST http://localhost/api/project/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-api",
+    "template": "python",
+    "description": "REST API project"
+  }'
+
+# Open in Claude
+curl -X POST http://localhost/api/project/my-api/open \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Review this project structure and suggest improvements"}'
+```
+
+**Templates:** `empty`, `python`, `node`, `web`
+
+### Upload Files and Ask Claude
+
+```bash
+# Upload single file
+curl -X POST http://localhost/api/upload \
+  -F "file=@myfile.py" \
+  -F "project=my-api"
+
+# Upload and ask Claude to analyze
+curl -X POST http://localhost/api/upload-and-ask \
+  -F "files=@main.py" \
+  -F "files=@utils.py" \
+  -F "prompt=Review these files for bugs" \
+  -F "project=my-api"
+```
+
+### List and Manage Projects
+
+```bash
+# List all projects
+curl http://localhost/api/projects
+
+# Get project details
+curl http://localhost/api/project/my-api
+```
+
+### Shareable Project URLs
+
+Once created, projects are accessible via:
+- **SMB**: `\\localhost\projects\my-api`
+- **SSH/SFTP**: `sftp claude@localhost:~/projects/my-api`
+- **Web Terminal**: `http://localhost/ttyd/` → `cd ~/projects/my-api`
+
 ### Research and Implement
 
 1. Search for information:

@@ -33,6 +33,7 @@ CLAUDE_CONFIG_DIR = os.path.expanduser("~/.claude")
 CLAUDE_SETTINGS_FILE = os.path.join(CLAUDE_CONFIG_DIR, "settings.json")
 CLAUDE_MCP_FILE = os.path.join(CLAUDE_CONFIG_DIR, "mcp-servers.json")
 WRAPPER_ENV_FILE = os.path.join(CLAUDE_CONFIG_DIR, "wrapper.env")
+PROJECTS_DIR = os.path.expanduser("~/projects")
 
 # Provider configurations - updated for Claude Code OpenAI Wrapper
 PROVIDERS = {
@@ -612,6 +613,235 @@ def wrapper_restart():
         "message": "Wrapper restart signal sent. Container restart required for full effect.",
         "note": "Run: docker-compose restart"
     })
+
+
+# ============== File Upload & Project Management ==============
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """Upload a file to projects directory"""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+
+    # Get target directory
+    project = request.form.get('project', '')
+    target_dir = os.path.join(PROJECTS_DIR, project) if project else PROJECTS_DIR
+    os.makedirs(target_dir, exist_ok=True)
+
+    # Save file
+    filepath = os.path.join(target_dir, file.filename)
+    file.save(filepath)
+
+    return jsonify({
+        "success": True,
+        "filename": file.filename,
+        "path": filepath,
+        "size": os.path.getsize(filepath)
+    })
+
+
+@app.route('/api/upload-and-ask', methods=['POST'])
+def upload_and_ask():
+    """Upload file(s) and send to Claude"""
+    import glob
+
+    if 'files' not in request.files and 'file' not in request.files:
+        return jsonify({"error": "No files provided"}), 400
+
+    files = request.files.getlist('files') if 'files' in request.files else [request.files['file']]
+    prompt = request.form.get('prompt', 'Analyze these files')
+    project = request.form.get('project', '')
+
+    # Create project directory
+    target_dir = os.path.join(PROJECTS_DIR, project) if project else PROJECTS_DIR
+    if project:
+        os.makedirs(target_dir, exist_ok=True)
+
+    uploaded = []
+    for file in files:
+        if file.filename:
+            filepath = os.path.join(target_dir, file.filename)
+            file.save(filepath)
+            uploaded.append(filepath)
+
+    # Build prompt with file context
+    full_prompt = f"{prompt}\n\nFiles uploaded:\n"
+    for f in uploaded:
+        full_prompt += f"- {f}\n"
+
+    # Send to Claude via Agent API
+    try:
+        req = urllib.request.Request(
+            "http://localhost:5001/v1/agent/execute",
+            data=json.dumps({
+                "prompt": full_prompt,
+                "working_dir": target_dir
+            }).encode(),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            result = json.loads(resp.read().decode())
+
+        return jsonify({
+            "success": True,
+            "files": uploaded,
+            "project": project,
+            "claude_response": result.get("output", ""),
+            "error": result.get("error")
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "files": uploaded,
+            "error": str(e)
+        })
+
+
+@app.route('/api/project/create', methods=['POST'])
+def create_project():
+    """Create a new project with optional template"""
+    data = request.get_json()
+    name = data.get('name', '')
+    template = data.get('template', 'empty')
+    description = data.get('description', '')
+
+    if not name:
+        return jsonify({"error": "Project name required"}), 400
+
+    # Sanitize name
+    safe_name = "".join(c if c.isalnum() or c in '-_' else '-' for c in name)
+    project_dir = os.path.join(PROJECTS_DIR, safe_name)
+
+    if os.path.exists(project_dir):
+        return jsonify({"error": "Project already exists"}), 409
+
+    os.makedirs(project_dir, exist_ok=True)
+
+    # Create based on template
+    if template == 'python':
+        os.makedirs(os.path.join(project_dir, 'src'), exist_ok=True)
+        with open(os.path.join(project_dir, 'README.md'), 'w') as f:
+            f.write(f"# {name}\n\n{description}\n")
+        with open(os.path.join(project_dir, 'requirements.txt'), 'w') as f:
+            f.write("# Add dependencies here\n")
+        with open(os.path.join(project_dir, 'src', 'main.py'), 'w') as f:
+            f.write('#!/usr/bin/env python3\n\ndef main():\n    pass\n\nif __name__ == "__main__":\n    main()\n')
+
+    elif template == 'node':
+        os.makedirs(os.path.join(project_dir, 'src'), exist_ok=True)
+        with open(os.path.join(project_dir, 'README.md'), 'w') as f:
+            f.write(f"# {name}\n\n{description}\n")
+        with open(os.path.join(project_dir, 'package.json'), 'w') as f:
+            json.dump({
+                "name": safe_name,
+                "version": "1.0.0",
+                "description": description,
+                "main": "src/index.js",
+                "scripts": {"start": "node src/index.js"}
+            }, f, indent=2)
+        with open(os.path.join(project_dir, 'src', 'index.js'), 'w') as f:
+            f.write('console.log("Hello World");\n')
+
+    elif template == 'web':
+        for subdir in ['css', 'js', 'images']:
+            os.makedirs(os.path.join(project_dir, subdir), exist_ok=True)
+        with open(os.path.join(project_dir, 'index.html'), 'w') as f:
+            f.write(f'<!DOCTYPE html>\n<html>\n<head>\n  <title>{name}</title>\n</head>\n<body>\n  <h1>{name}</h1>\n</body>\n</html>\n')
+
+    else:  # empty
+        with open(os.path.join(project_dir, 'README.md'), 'w') as f:
+            f.write(f"# {name}\n\n{description}\n")
+
+    return jsonify({
+        "success": True,
+        "name": safe_name,
+        "path": project_dir,
+        "template": template,
+        "share_url": f"/projects/{safe_name}"
+    })
+
+
+@app.route('/api/projects', methods=['GET'])
+def list_projects():
+    """List all projects"""
+    if not os.path.exists(PROJECTS_DIR):
+        return jsonify({"projects": []})
+
+    projects = []
+    for name in os.listdir(PROJECTS_DIR):
+        path = os.path.join(PROJECTS_DIR, name)
+        if os.path.isdir(path):
+            projects.append({
+                "name": name,
+                "path": path,
+                "modified": os.path.getmtime(path),
+                "file_count": sum(1 for _ in os.walk(path) for __ in _[2])
+            })
+
+    return jsonify({"projects": sorted(projects, key=lambda x: x['modified'], reverse=True)})
+
+
+@app.route('/api/project/<name>', methods=['GET'])
+def get_project(name):
+    """Get project details"""
+    project_dir = os.path.join(PROJECTS_DIR, name)
+    if not os.path.exists(project_dir):
+        return jsonify({"error": "Project not found"}), 404
+
+    files = []
+    for root, dirs, filenames in os.walk(project_dir):
+        for f in filenames:
+            filepath = os.path.join(root, f)
+            relpath = os.path.relpath(filepath, project_dir)
+            files.append({
+                "name": f,
+                "path": relpath,
+                "size": os.path.getsize(filepath),
+                "modified": os.path.getmtime(filepath)
+            })
+
+    return jsonify({
+        "name": name,
+        "path": project_dir,
+        "files": files,
+        "share_url": f"/projects/{name}"
+    })
+
+
+@app.route('/api/project/<name>/open', methods=['POST'])
+def open_project_in_claude(name):
+    """Send project to Claude for analysis/working"""
+    project_dir = os.path.join(PROJECTS_DIR, name)
+    if not os.path.exists(project_dir):
+        return jsonify({"error": "Project not found"}), 404
+
+    prompt = request.get_json().get('prompt', f'Open and analyze the project at {project_dir}')
+
+    try:
+        req = urllib.request.Request(
+            "http://localhost:5001/v1/agent/execute",
+            data=json.dumps({
+                "prompt": prompt,
+                "working_dir": project_dir
+            }).encode(),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            result = json.loads(resp.read().decode())
+
+        return jsonify({
+            "success": True,
+            "project": name,
+            "path": project_dir,
+            "claude_response": result.get("output", ""),
+            "error": result.get("error")
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 # ============== Static Routes ==============
