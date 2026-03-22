@@ -176,7 +176,7 @@ class Orchestrator:
         return None
 
     def _execute_with_provider(self, task: Task, prompt: str) -> dict:
-        """Execute task with specific provider"""
+        """Execute task with specific provider using direct HTTP calls"""
         provider = task.provider
 
         if provider is None:
@@ -195,61 +195,118 @@ class Orchestrator:
             except requests.exceptions.RequestException as e:
                 return {"success": False, "error": str(e), "output": ""}
 
-        # Build provider-specific environment
-        env = os.environ.copy()
-
-        if provider.type == "anthropic":
-            env["ANTHROPIC_API_KEY"] = provider.api_key or ""
-            if provider.base_url:
-                env["ANTHROPIC_BASE_URL"] = provider.base_url
-            model = provider.default_model or "claude-sonnet-4-6"
+        # Direct HTTP execution for each provider type
+        if provider.type == "ollama":
+            return self._execute_ollama(provider, prompt, task.timeout)
+        elif provider.type == "anthropic":
+            return self._execute_anthropic(provider, prompt, task.timeout)
         elif provider.type == "zai":
-            env["ANTHROPIC_API_KEY"] = provider.api_key or ""
-            env["ANTHROPIC_BASE_URL"] = "https://api.z.ai/api/anthropic"
-            model = provider.default_model or "glm-4.7"
-        elif provider.type == "ollama":
-            host = provider.host or "host.docker.internal"
-            port = provider.port or 11434
-            env["ANTHROPIC_API_KEY"] = "ollama"
-            env["ANTHROPIC_BASE_URL"] = f"http://{host}:{port}/v1"
-            model = provider.default_model or "llama3"
+            return self._execute_zai(provider, prompt, task.timeout)
         elif provider.type == "openrouter":
-            env["ANTHROPIC_API_KEY"] = provider.api_key or ""
-            env["ANTHROPIC_BASE_URL"] = "https://openrouter.ai/api/v1"
-            model = provider.default_model or "anthropic/claude-sonnet"
-        elif provider.type == "nvidia":
-            env["ANTHROPIC_API_KEY"] = provider.api_key or ""
-            env["ANTHROPIC_BASE_URL"] = "https://integrate.api.nvidia.com/v1"
-            model = provider.default_model or "meta/llama-3.1-8b-instruct"
-        elif provider.type == "custom":
-            env["ANTHROPIC_API_KEY"] = provider.api_key or ""
-            if provider.base_url:
-                env["ANTHROPIC_BASE_URL"] = provider.base_url
-            model = provider.default_model or "default"
+            return self._execute_openrouter(provider, prompt, task.timeout)
         else:
-            raise ValueError(f"Unknown provider type: {provider.type}")
+            return {"success": False, "error": f"Unsupported provider type: {provider.type}", "output": ""}
 
-        # Run claude with the provider config
-        cmd = ["claude", "--print", prompt]
-        if model:
-            cmd.extend(["--model", model])
+    def _execute_ollama(self, provider: Provider, prompt: str, timeout: int) -> dict:
+        """Execute via Ollama API directly"""
+        host = provider.host or "host.docker.internal"
+        port = provider.port or 11434
+        model = provider.default_model or "llama3"
 
         try:
-            result = subprocess.run(
-                cmd,
-                cwd=task.working_dir,
-                capture_output=True,
-                text=True,
-                timeout=task.timeout,
-                env=env
+            response = requests.post(
+                f"http://{host}:{port}/api/chat",
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": False
+                },
+                timeout=timeout
             )
-            return {
-                "success": result.returncode == 0,
-                "output": result.stdout,
-                "error": result.stderr if result.returncode != 0 else ""
-            }
-        except subprocess.TimeoutExpired:
-            return {"success": False, "error": f"Timeout after {task.timeout}s", "output": ""}
+            if response.status_code == 200:
+                data = response.json()
+                output = data.get("message", {}).get("content", "")
+                return {"success": True, "output": output, "error": ""}
+            else:
+                return {"success": False, "error": f"Ollama error: {response.status_code}", "output": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e), "output": ""}
+
+    def _execute_anthropic(self, provider: Provider, prompt: str, timeout: int) -> dict:
+        """Execute via Anthropic API directly"""
+        import urllib.request
+        model = provider.default_model or "claude-sonnet-4-6-20250929"
+
+        try:
+            req = urllib.request.Request(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": provider.api_key or "",
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json"
+                },
+                data=json.dumps({
+                    "model": model,
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": prompt}]
+                }).encode()
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode())
+                output = data.get("content", [{}])[0].get("text", "")
+                return {"success": True, "output": output, "error": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e), "output": ""}
+
+    def _execute_zai(self, provider: Provider, prompt: str, timeout: int) -> dict:
+        """Execute via Z.AI API (Anthropic-compatible)"""
+        import urllib.request
+        model = provider.default_model or "glm-4.7"
+
+        try:
+            req = urllib.request.Request(
+                "https://api.z.ai/api/anthropic/v1/messages",
+                headers={
+                    "x-api-key": provider.api_key or "",
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json"
+                },
+                data=json.dumps({
+                    "model": model,
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": prompt}]
+                }).encode()
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode())
+                output = data.get("content", [{}])[0].get("text", "")
+                return {"success": True, "output": output, "error": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e), "output": ""}
+
+    def _execute_openrouter(self, provider: Provider, prompt: str, timeout: int) -> dict:
+        """Execute via OpenRouter API"""
+        model = provider.default_model or "anthropic/claude-sonnet"
+
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {provider.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}]
+                },
+                timeout=timeout
+            )
+            if response.status_code == 200:
+                data = response.json()
+                output = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                return {"success": True, "output": output, "error": ""}
+            else:
+                return {"success": False, "error": f"OpenRouter error: {response.status_code}", "output": ""}
         except Exception as e:
             return {"success": False, "error": str(e), "output": ""}
 
