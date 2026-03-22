@@ -4,7 +4,7 @@ Claude Code LLM Onboarding Wizard - Flask Application
 Auto-port detection for multiple container deployment
 """
 
-from flask import Flask, jsonify, request, render_template, send_from_directory
+from flask import Flask, jsonify, request, render_template, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 import os
 import json
@@ -14,6 +14,7 @@ import urllib.parse
 import socket
 import platform
 import threading
+import time
 
 # Import orchestrator
 from orchestrator import orchestrator
@@ -852,9 +853,18 @@ def open_project_in_claude(name):
 
 @app.route('/api/registry/providers', methods=['GET'])
 def list_registered_providers():
-    """List all registered providers"""
+    """List all registered providers (with masked API keys)"""
+    providers = orchestrator.list_providers()
+    # Mask API keys in response
+    for name, config in providers.items():
+        if 'api_key' in config and config['api_key']:
+            key = config['api_key']
+            if len(key) > 8:
+                config['api_key'] = key[:4] + '...' + key[-4:]
+            else:
+                config['api_key'] = '****'
     return jsonify({
-        "providers": orchestrator.list_providers()
+        "providers": providers
     })
 
 
@@ -881,6 +891,135 @@ def register_provider():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+
+# ============== Provider Validation & Discovery ==============
+# NOTE: These routes MUST come before /api/registry/providers/<name> routes
+
+@app.route('/api/registry/providers/validate', methods=['POST'])
+def validate_provider():
+    """Validate provider credentials before saving"""
+    data = request.get_json()
+    provider_type = data.get("type")
+    api_key = data.get("api_key")
+
+    if provider_type == "anthropic":
+        try:
+            req = urllib.request.Request(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json"
+                },
+                data=json.dumps({
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "hi"}]
+                }).encode()
+            )
+            urllib.request.urlopen(req, timeout=10)
+            return jsonify({"valid": True})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                return jsonify({"valid": False, "error": "Invalid API key"})
+            return jsonify({"valid": False, "error": str(e)})
+        except Exception as e:
+            return jsonify({"valid": False, "error": str(e)})
+
+    elif provider_type == "zai":
+        try:
+            req = urllib.request.Request(
+                "https://api.z.ai/api/anthropic/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json"
+                },
+                data=json.dumps({
+                    "model": "glm-4.5-air",
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "hi"}]
+                }).encode()
+            )
+            urllib.request.urlopen(req, timeout=10)
+            return jsonify({"valid": True})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                return jsonify({"valid": False, "error": "Invalid API key"})
+            return jsonify({"valid": False, "error": str(e)})
+        except Exception as e:
+            return jsonify({"valid": False, "error": str(e)})
+
+    elif provider_type == "ollama":
+        host = data.get("host", "host.docker.internal")
+        port = data.get("port", 11434)
+        try:
+            url = f"http://{host}:{port}/api/tags"
+            urllib.request.urlopen(url, timeout=5)
+            return jsonify({"valid": True})
+        except Exception as e:
+            return jsonify({"valid": False, "error": f"Cannot connect to Ollama at {host}:{port}"})
+
+    elif provider_type == "openrouter":
+        try:
+            req = urllib.request.Request(
+                "https://openrouter.ai/api/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"}
+            )
+            urllib.request.urlopen(req, timeout=10)
+            return jsonify({"valid": True})
+        except Exception as e:
+            return jsonify({"valid": False, "error": str(e)})
+
+    elif provider_type == "nvidia":
+        try:
+            req = urllib.request.Request(
+                "https://integrate.api.nvidia.com/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"}
+            )
+            urllib.request.urlopen(req, timeout=10)
+            return jsonify({"valid": True})
+        except Exception as e:
+            return jsonify({"valid": False, "error": str(e)})
+
+    # For others, just check key format
+    if api_key and len(api_key) > 10:
+        return jsonify({"valid": True, "warning": "Could not fully verify"})
+
+    return jsonify({"valid": False, "error": "Invalid API key"})
+
+
+@app.route('/api/registry/providers/<name>/models', methods=['GET'])
+def get_provider_models(name):
+    """Get available models from a registered provider"""
+    provider = orchestrator.get_provider(name)
+    if not provider:
+        return jsonify({"error": "Provider not found"}), 404
+
+    if provider.type == "anthropic":
+        return jsonify({"models": [
+            {"id": "claude-opus-4-6-20250929", "name": "Claude Opus 4.6"},
+            {"id": "claude-sonnet-4-6-20250929", "name": "Claude Sonnet 4.6"},
+            {"id": "claude-haiku-4-5-20251001", "name": "Claude Haiku 4.5"}
+        ]})
+    elif provider.type == "zai":
+        return jsonify({"models": [
+            {"id": "glm-5", "name": "GLM-5"},
+            {"id": "glm-4.7", "name": "GLM-4.7"},
+            {"id": "glm-4.5-air", "name": "GLM-4.5-Air"}
+        ]})
+    elif provider.type == "ollama":
+        models = fetch_ollama_models(provider.host, provider.port)
+        return jsonify({"models": models if isinstance(models, list) else []})
+    elif provider.type == "openrouter":
+        models = fetch_openrouter_models(provider.api_key)
+        return jsonify({"models": models if isinstance(models, list) else []})
+    elif provider.type == "nvidia":
+        models = fetch_nvidia_models(provider.api_key)
+        return jsonify({"models": models if isinstance(models, list) else []})
+
+    return jsonify({"models": []})
 
 
 @app.route('/api/registry/providers/<name>', methods=['GET'])
@@ -1041,6 +1180,71 @@ def delete_completed_orchestration(workflow_id):
     if orchestrator.delete_workflow(workflow_id):
         return jsonify({"success": True, "message": "Workflow deleted"})
     return jsonify({"error": "Failed to delete workflow"}), 500
+
+
+@app.route('/api/orchestrate/<workflow_id>/stream', methods=['GET'])
+def stream_workflow(workflow_id):
+    """Server-Sent Events stream for workflow updates"""
+    def generate():
+        last_status = {}
+        max_iterations = 3600  # 1 hour max at 1s intervals
+
+        for _ in range(max_iterations):
+            workflow = orchestrator.get_workflow(workflow_id)
+            if not workflow:
+                yield f"event: error\ndata: {json.dumps({'error': 'Workflow not found'})}\n\n"
+                break
+
+            # Check for changes
+            current_status = {tid: t.get("status") for tid, t in workflow.get("tasks", {}).items()}
+            if current_status != last_status:
+                yield f"event: update\ndata: {json.dumps(workflow)}\n\n"
+                last_status = current_status.copy()
+
+            # Stop if workflow is done
+            if workflow.get("status") in ["completed", "failed", "cancelled"]:
+                yield f"event: complete\ndata: {json.dumps(workflow)}\n\n"
+                break
+
+            time.sleep(1)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
+        }
+    )
+
+
+@app.route('/api/orchestrate/<workflow_id>/retry', methods=['POST'])
+def retry_workflow_task(workflow_id):
+    """Retry a failed task"""
+    data = request.get_json() or {}
+    task_id = data.get("task_id")
+
+    result = orchestrator.retry_task(workflow_id, task_id)
+    if result:
+        return jsonify({"success": True, "task": result})
+    return jsonify({"error": "Cannot retry task"}), 400
+
+
+@app.route('/api/orchestrate/<workflow_id>/pause', methods=['POST'])
+def pause_workflow(workflow_id):
+    """Pause a running workflow"""
+    if orchestrator.pause_workflow(workflow_id):
+        return jsonify({"success": True})
+    return jsonify({"error": "Cannot pause workflow"}), 400
+
+
+@app.route('/api/orchestrate/<workflow_id>/resume', methods=['POST'])
+def resume_workflow(workflow_id):
+    """Resume a paused workflow"""
+    if orchestrator.resume_workflow(workflow_id):
+        return jsonify({"success": True})
+    return jsonify({"error": "Cannot resume workflow"}), 400
 
 
 # ============== Static Routes ==============

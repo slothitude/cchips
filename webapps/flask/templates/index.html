@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Code - LLM Provider Setup</title>
+    <title>CChips - Multi-Agent Control Center</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="app">
+    <div id="app" class="app-layout">
         <!-- Header -->
         <header class="header">
             <div class="header-content">
@@ -20,7 +20,7 @@
                         <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" fill="white"/>
                         <circle cx="16" cy="16" r="4" fill="#D97706"/>
                     </svg>
-                    <span>Claude Code</span>
+                    <span>CChips</span>
                 </div>
                 <div class="header-info">
                     <span class="hostname" id="hostname">{{ system_info.hostname }}</span>
@@ -29,176 +29,210 @@
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="main">
-            <!-- Welcome Screen -->
-            <div id="welcome-screen" class="screen active">
-                <div class="welcome-container">
-                    <h1>Welcome to Claude Code</h1>
-                    <p class="subtitle">Configure your LLM provider to get started</p>
-
-                    <div class="service-grid">
-                        <div class="service-card">
-                            <div class="service-icon">🤖</div>
-                            <h3>Claude API</h3>
-                            <p>OpenAI/Anthropic Compatible</p>
-                            <a href="/wrapper/" target="_blank" class="service-link">
-                                API Explorer →
-                            </a>
-                        </div>
-                        <div class="service-card">
-                            <div class="service-icon">🔍</div>
-                            <h3>SearXNG</h3>
-                            <p>Privacy Search</p>
-                            <a href="/search/" target="_blank" class="service-link">
-                                Open Search →
-                            </a>
-                        </div>
-                        <div class="service-card">
-                            <div class="service-icon">🌐</div>
-                            <h3>SSH Terminal</h3>
-                            <p>Guacamole Web Shell</p>
-                            <a href="/guacamole/#/client/WEB-SSH" target="_blank" class="service-link">
-                                Open Terminal →
-                            </a>
-                        </div>
-                        <div class="service-card">
-                            <div class="service-icon">📁</div>
-                            <h3>Samba</h3>
-                            <p>File Sharing</p>
-                            <span class="service-link">Ports 139, 445</span>
-                        </div>
-                        <div class="service-card">
-                            <div class="service-icon">🔐</div>
-                            <h3>SSH/SFTP</h3>
-                            <p>Secure Access</p>
-                            <span class="service-link">Port {{ system_info.ports.ssh }}</span>
-                        </div>
-                    </div>
-
-                    <button class="btn btn-primary btn-large" onclick="startWizard()">
-                        Configure LLM Provider
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M7 4L14 10L7 16V4Z"/>
+        <div class="app-body">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-logo">
+                    <div class="logo">
+                        <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+                            <rect width="32" height="32" rx="8" fill="#D97706"/>
+                            <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" fill="white"/>
                         </svg>
-                    </button>
-
-                    {% if current_provider %}
-                    <p class="current-config">
-                        Current provider: <strong>{{ current_provider }}</strong>
-                        <button class="btn btn-small" onclick="showCurrentConfig()">View Config</button>
-                    </p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Provider Selection -->
-            <div id="provider-screen" class="screen">
-                <div class="wizard-container">
-                    <div class="wizard-header">
-                        <h2>Select LLM Provider</h2>
-                        <p>Choose your preferred AI provider</p>
-                    </div>
-
-                    <div class="provider-grid" id="provider-grid">
-                        <!-- Populated by JS -->
-                    </div>
-
-                    <div class="wizard-nav">
-                        <button class="btn btn-secondary" onclick="showScreen('welcome-screen')">Back</button>
+                        <span>Control Center</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Configuration Screen -->
-            <div id="config-screen" class="screen">
-                <div class="wizard-container">
-                    <div class="wizard-header">
-                        <button class="btn btn-back" onclick="showScreen('provider-screen')">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                <path d="M10 4L6 8L10 12V4Z"/>
-                            </svg>
-                        </button>
-                        <div>
-                            <h2 id="config-title">Configure Provider</h2>
-                            <p id="config-subtitle">Enter your credentials</p>
+                <nav class="nav-section">
+                    <div class="nav-section-title">Navigation</div>
+                    <a href="#" class="nav-item active" data-view="dashboard">
+                        <span class="nav-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-view="providers">
+                        <span class="nav-icon">🔌</span>
+                        <span>Providers</span>
+                    </a>
+                    <a href="#" class="nav-item" data-view="workflows">
+                        <span class="nav-icon">⚡</span>
+                        <span>Workflows</span>
+                    </a>
+                </nav>
+
+                <nav class="nav-section">
+                    <div class="nav-section-title">Services</div>
+                    <a href="/v1/" target="_blank" class="nav-item">
+                        <span class="nav-icon">🤖</span>
+                        <span>API</span>
+                    </a>
+                    <a href="/search/" target="_blank" class="nav-item">
+                        <span class="nav-icon">🔍</span>
+                        <span>Search</span>
+                    </a>
+                    <a href="/ttyd/" target="_blank" class="nav-item">
+                        <span class="nav-icon">💻</span>
+                        <span>Terminal</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main">
+                <!-- Dashboard View -->
+                <section id="view-dashboard" class="view active">
+                    <div class="stats-grid">
+                        <div class="stat-card providers">
+                            <div class="stat-icon">🔌</div>
+                            <div class="stat-value" id="provider-count">0</div>
+                            <div class="stat-label">Providers</div>
+                        </div>
+                        <div class="stat-card workflows">
+                            <div class="stat-icon">⚡</div>
+                            <div class="stat-value" id="workflow-count">0</div>
+                            <div class="stat-label">Workflows</div>
+                        </div>
+                        <div class="stat-card completed">
+                            <div class="stat-icon">✅</div>
+                            <div class="stat-value" id="completed-count">0</div>
+                            <div class="stat-label">Completed</div>
                         </div>
                     </div>
 
-                    <div class="config-form" id="config-form">
-                        <!-- Populated by JS based on provider -->
-                    </div>
-
-                    <div class="wizard-nav">
-                        <button class="btn btn-secondary" onclick="showScreen('provider-screen')">Back</button>
-                        <button class="btn btn-primary" id="save-config-btn" onclick="saveConfiguration()">
-                            Save Configuration
+                    <div class="quick-actions">
+                        <button class="btn btn-primary" onclick="showModal('modal-provider')">
+                            <span>+</span> Add Provider
+                        </button>
+                        <button class="btn btn-secondary" onclick="showModal('modal-workflow')">
+                            <span>⚡</span> New Workflow
                         </button>
                     </div>
-                </div>
-            </div>
 
-            <!-- Model Selection Screen -->
-            <div id="model-screen" class="screen">
-                <div class="wizard-container">
-                    <div class="wizard-header">
-                        <button class="btn btn-back" onclick="showScreen('config-screen')">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                <path d="M10 4L6 8L10 12V4Z"/>
-                            </svg>
-                        </button>
-                        <div>
-                            <h2>Select Model</h2>
-                            <p id="model-subtitle">Choose the model to use</p>
+                    <div class="activity-section">
+                        <h3>Recent Activity</h3>
+                        <div class="activity-feed" id="activity-feed">
+                            <div class="activity-item">
+                                <div class="activity-icon success">✓</div>
+                                <div class="activity-content">
+                                    <div class="activity-title">System initialized</div>
+                                    <div class="activity-time">Just now</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="model-list" id="model-list">
-                        <!-- Populated by JS -->
+                    <div class="services-section">
+                        <h3>Quick Access</h3>
+                        <div class="service-grid">
+                            <a href="/v1/" class="service-card" target="_blank">
+                                <span class="service-icon">🤖</span>
+                                <span class="service-name">API</span>
+                            </a>
+                            <a href="/search/" class="service-card" target="_blank">
+                                <span class="service-icon">🔍</span>
+                                <span class="service-name">Search</span>
+                            </a>
+                            <a href="/ttyd/" class="service-card" target="_blank">
+                                <span class="service-icon">💻</span>
+                                <span class="service-name">Terminal</span>
+                            </a>
+                        </div>
                     </div>
+                </section>
 
-                    <div class="wizard-nav">
-                        <button class="btn btn-secondary" onclick="showScreen('config-screen')">Back</button>
-                        <button class="btn btn-primary" id="final-save-btn" onclick="finalSave()">
-                            Complete Setup
+                <!-- Providers View -->
+                <section id="view-providers" class="view">
+                    <div class="page-header">
+                        <h2>Providers</h2>
+                        <button class="btn btn-primary" onclick="showModal('modal-provider')">
+                            + Add Provider
                         </button>
                     </div>
-                </div>
-            </div>
 
-            <!-- Success Screen -->
-            <div id="success-screen" class="screen">
-                <div class="success-container">
-                    <div class="success-icon">
-                        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                            <circle cx="32" cy="32" r="30" stroke="#10B981" stroke-width="4"/>
-                            <path d="M20 32L28 40L44 24" stroke="#10B981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <h2>Setup Complete!</h2>
-                    <p id="success-message">Your LLM provider has been configured.</p>
-
-                    <div class="next-steps">
-                        <h3>Next Steps</h3>
-                        <div class="code-block">
-                            <code># Start Claude Code<br>claude</code>
-                            <button class="btn btn-small btn-copy" onclick="copyCode('claude')">Copy</button>
-                        </div>
-                        <div class="code-block">
-                            <code># Or use the interactive setup<br>claude-setup</code>
-                            <button class="btn btn-small btn-copy" onclick="copyCode('claude-setup')">Copy</button>
-                        </div>
+                    <div class="provider-grid" id="provider-list">
+                        <!-- Provider cards rendered dynamically -->
                     </div>
 
-                    <button class="btn btn-primary" onclick="resetWizard()">Configure Another Provider</button>
-                </div>
-            </div>
-        </main>
+                    <div class="empty-state" id="no-providers" style="display:none;">
+                        <div class="empty-icon">🔌</div>
+                        <h3>No providers configured</h3>
+                        <p>Add your first LLM provider to get started</p>
+                        <button class="btn btn-primary" onclick="showModal('modal-provider')">
+                            Add Provider
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Workflows View -->
+                <section id="view-workflows" class="view">
+                    <div class="page-header">
+                        <h2>Workflows</h2>
+                        <button class="btn btn-primary" onclick="showModal('modal-workflow')">
+                            ⚡ New Workflow
+                        </button>
+                    </div>
+
+                    <div class="filter-bar">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="running">
+                            <span class="task-dot running"></span> Running
+                        </button>
+                        <button class="filter-btn" data-filter="completed">
+                            <span class="task-dot completed"></span> Completed
+                        </button>
+                        <button class="filter-btn" data-filter="failed">
+                            <span class="task-dot failed"></span> Failed
+                        </button>
+                    </div>
+
+                    <div class="workflow-list" id="workflow-list">
+                        <!-- Workflow cards rendered dynamically -->
+                    </div>
+
+                    <div class="empty-state" id="no-workflows" style="display:none;">
+                        <div class="empty-icon">⚡</div>
+                        <h3>No workflows yet</h3>
+                        <p>Create your first multi-agent workflow</p>
+                        <button class="btn btn-primary" onclick="showModal('modal-workflow')">
+                            Create Workflow
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Workflow Detail View -->
+                <section id="view-workflow-detail" class="view">
+                    <div class="workflow-detail-header">
+                        <button class="btn btn-ghost" onclick="showView('workflows')">← Back</button>
+                        <div class="workflow-info">
+                            <h2>Workflow <code id="detail-id"></code></h2>
+                            <span class="workflow-status-badge" id="detail-status"></span>
+                        </div>
+                        <div class="workflow-actions">
+                            <button class="btn btn-secondary" id="btn-retry" onclick="retryWorkflow()">↻ Retry</button>
+                            <button class="btn btn-danger" id="btn-cancel" onclick="cancelWorkflow()">✕ Cancel</button>
+                        </div>
+                    </div>
+
+                    <div class="tasks-section">
+                        <h3>Tasks</h3>
+                        <div class="task-list" id="detail-tasks">
+                            <!-- Task items rendered dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="output-section">
+                        <div class="output-header">
+                            <h3>Output</h3>
+                            <button class="btn btn-ghost btn-sm" onclick="copyOutput()">Copy</button>
+                        </div>
+                        <pre class="output-content" id="detail-output">No output yet</pre>
+                    </div>
+                </section>
+            </main>
+        </div>
 
         <!-- Footer -->
         <footer class="footer">
             <div class="footer-content">
-                <span>Claude Code Docker Container</span>
+                <span>CChips Multi-Agent Control Center</span>
                 <span class="separator">|</span>
                 <span>Flask: {{ system_info.ports.flask }}</span>
                 <span class="separator">|</span>
@@ -207,385 +241,844 @@
         </footer>
     </div>
 
+    <!-- Add Provider Modal -->
+    <div class="modal-overlay" id="modal-provider">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Provider</h3>
+                <button class="modal-close" onclick="closeModal('modal-provider')">&times;</button>
+            </div>
+
+            <form id="provider-form">
+                <div class="form-group">
+                    <label class="form-label">Provider Type</label>
+                    <select class="form-select" name="type" required onchange="updateProviderFields()">
+                        <option value="">Select provider...</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="zai">Z.AI (GLM)</option>
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="nvidia">NVIDIA NIM</option>
+                        <option value="custom">Custom Endpoint</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Provider Name</label>
+                    <input class="form-input" name="name" placeholder="my-provider" required>
+                </div>
+
+                <!-- Dynamic fields container -->
+                <div id="provider-dynamic-fields"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="validateProviderForm()">
+                        Validate
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Save Provider
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Workflow Modal -->
+    <div class="modal-overlay" id="modal-workflow">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 class="modal-title">Create Workflow</h3>
+                <button class="modal-close" onclick="closeModal('modal-workflow')">&times;</button>
+            </div>
+
+            <form id="workflow-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Mode</label>
+                        <select class="form-select" name="mode">
+                            <option value="parallel">⚡ Parallel (all at once)</option>
+                            <option value="sequential">→ Sequential (one by one)</option>
+                            <option value="dag">◇ DAG (with dependencies)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Max Parallel</label>
+                        <input class="form-input" type="number" name="max_parallel" value="3" min="1" max="10">
+                    </div>
+                </div>
+
+                <!-- Task Builder -->
+                <div class="task-builder">
+                    <div class="task-builder-header">
+                        <h4>Tasks</h4>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="addTaskRow()">+ Add Task</button>
+                    </div>
+                    <div id="tasks-container"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-workflow')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        ⚡ Create & Run
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
     <script>
-        // Provider data from server
-        const PROVIDERS = {{ providers | tojson | safe }};
-        let selectedProvider = null;
-        let configData = {};
-        let selectedModel = null;
+        // ============== STATE MANAGEMENT ==============
+        const AppState = {
+            providers: {},
+            workflows: [],
+            currentWorkflow: null,
+            activeEventSource: null,
+            providerTypes: {{ providers | tojson | safe }}
+        };
 
-        // Initialize
+        let taskCounter = 0;
+
+        // ============== INITIALIZATION ==============
         document.addEventListener('DOMContentLoaded', () => {
-            renderProviders();
+            // Navigation
+            document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showView(item.dataset.view);
+                });
+            });
+
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filterWorkflows(btn.dataset.filter);
+                });
+            });
+
+            // Forms
+            document.getElementById('provider-form')?.addEventListener('submit', saveProvider);
+            document.getElementById('workflow-form')?.addEventListener('submit', createWorkflow);
+
+            // Load initial data
+            showView('dashboard');
         });
 
-        // Screen navigation
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
+        // ============== SPA NAVIGATION ==============
+        function showView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view-${viewName}`).classList.add('active');
+
+            document.querySelectorAll('.nav-item[data-view]').forEach(n => n.classList.remove('active'));
+            document.querySelector(`[data-view="${viewName}"]`)?.classList.add('active');
+
+            // Load data for view
+            if (viewName === 'providers') loadProviders();
+            if (viewName === 'workflows') loadWorkflows();
+            if (viewName === 'dashboard') loadDashboard();
         }
 
-        // Start wizard
-        function startWizard() {
-            showScreen('provider-screen');
-        }
-
-        // Render provider cards
-        function renderProviders() {
-            const grid = document.getElementById('provider-grid');
-            grid.innerHTML = '';
-
-            Object.entries(PROVIDERS).forEach(([id, provider]) => {
-                const card = document.createElement('div');
-                card.className = 'provider-card';
-                card.onclick = () => selectProvider(id);
-
-                const badge = provider.free_only ? '<span class="badge badge-free">FREE Models</span>' : '';
-                const localBadge = provider.local ? '<span class="badge badge-local">LOCAL</span>' : '';
-
-                card.innerHTML = `
-                    <div class="provider-header">
-                        <h3>${provider.name}</h3>
-                        ${badge}${localBadge}
-                    </div>
-                    <p>${provider.description}</p>
-                    ${provider.api_key_url ? `<a href="${provider.api_key_url}" target="_blank" class="api-link">Get API Key →</a>` : ''}
-                `;
-
-                grid.appendChild(card);
-            });
-        }
-
-        // Select provider
-        function selectProvider(providerId) {
-            selectedProvider = providerId;
-            const provider = PROVIDERS[providerId];
-
-            document.getElementById('config-title').textContent = `Configure ${provider.name}`;
-            document.getElementById('config-subtitle').textContent = provider.description;
-
-            renderConfigForm(provider);
-            showScreen('config-screen');
-        }
-
-        // Render configuration form
-        function renderConfigForm(provider) {
-            const form = document.getElementById('config-form');
-            let html = '';
-
-            if (provider.custom) {
-                html = `
-                    <div class="form-group">
-                        <label>API Key</label>
-                        <input type="password" id="api-key" placeholder="Enter your API key">
-                    </div>
-                    <div class="form-group">
-                        <label>Base URL</label>
-                        <input type="text" id="base-url" placeholder="https://api.example.com/v1">
-                    </div>
-                    <div class="form-group">
-                        <label>Haiku Model</label>
-                        <input type="text" id="haiku-model" placeholder="model-haiku">
-                    </div>
-                    <div class="form-group">
-                        <label>Sonnet Model</label>
-                        <input type="text" id="sonnet-model" placeholder="model-sonnet">
-                    </div>
-                    <div class="form-group">
-                        <label>Opus Model</label>
-                        <input type="text" id="opus-model" placeholder="model-opus">
-                    </div>
-                `;
-            } else if (provider.local) {
-                html = `
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Ollama Host</label>
-                            <input type="text" id="ollama-host" value="${provider.default_host}" placeholder="host.docker.internal">
-                        </div>
-                        <div class="form-group">
-                            <label>Port</label>
-                            <input type="number" id="ollama-port" value="${provider.default_port}" placeholder="11434">
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="fetchOllamaModels()">
-                        Detect Models
-                    </button>
-                `;
-            } else {
-                html = `
-                    <div class="form-group">
-                        <label>API Key</label>
-                        <div class="input-with-link">
-                            <input type="password" id="api-key" placeholder="Enter your API key">
-                            ${provider.api_key_url ? `<a href="${provider.api_key_url}" target="_blank" class="inline-link">Get Key</a>` : ''}
-                        </div>
-                    </div>
-                `;
-
-                if (provider.models_endpoint) {
-                    html += `
-                        <button class="btn btn-secondary" onclick="fetchModels()">
-                            Fetch Available Models
-                        </button>
-                    `;
-                }
-            }
-
-            form.innerHTML = html;
-        }
-
-        // Fetch models from API
-        async function fetchModels() {
-            const apiKey = document.getElementById('api-key')?.value;
-            if (!apiKey) {
-                showToast('Please enter an API key first', 'error');
-                return;
-            }
-
-            showToast('Fetching models...', 'info');
-
+        // ============== DASHBOARD ==============
+        async function loadDashboard() {
             try {
-                const response = await fetch(`/api/providers/${selectedProvider}/models`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({api_key: apiKey})
-                });
+                const [providers, workflows] = await Promise.all([
+                    fetch('/api/registry/providers').then(r => r.json()),
+                    fetch('/api/orchestrate').then(r => r.json())
+                ]);
 
-                const data = await response.json();
+                AppState.providers = providers.providers || {};
 
-                if (data.models) {
-                    if (data.models.error) {
-                        showToast(data.models.error, 'error');
-                        return;
-                    }
-                    showModelSelection(data.models);
-                } else {
-                    showToast('No models found', 'error');
-                }
+                // Animate counters
+                animateCounter('provider-count', Object.keys(AppState.providers).length);
+                animateCounter('workflow-count', workflows.count || 0);
+
+                const completed = workflows.workflows?.filter(w => w.status === 'completed').length || 0;
+                animateCounter('completed-count', completed);
+
+                // Update activity feed
+                updateActivityFeed(workflows.workflows || []);
             } catch (error) {
-                showToast('Failed to fetch models: ' + error.message, 'error');
+                console.error('Failed to load dashboard:', error);
             }
         }
 
-        // Fetch Ollama models
-        async function fetchOllamaModels() {
-            const host = document.getElementById('ollama-host')?.value || 'host.docker.internal';
-            const port = document.getElementById('ollama-port')?.value || 11434;
+        function animateCounter(elementId, target) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
 
-            showToast('Detecting Ollama models...', 'info');
+            const duration = 1000;
+            const start = parseInt(el.textContent) || 0;
+            const increment = (target - start) / (duration / 16);
+            let current = start;
 
+            const timer = setInterval(() => {
+                current += increment;
+                if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
+                    el.textContent = target;
+                    clearInterval(timer);
+                } else {
+                    el.textContent = Math.round(current);
+                }
+            }, 16);
+        }
+
+        function updateActivityFeed(workflows) {
+            const feed = document.getElementById('activity-feed');
+            if (!feed || workflows.length === 0) return;
+
+            const recent = workflows.slice(0, 5);
+            feed.innerHTML = recent.map(w => {
+                const icon = w.status === 'completed' ? '✓' : w.status === 'running' ? '◐' : w.status === 'failed' ? '✕' : '○';
+                const iconClass = w.status === 'completed' ? 'success' : w.status === 'running' ? 'running' : w.status === 'failed' ? 'error' : '';
+                const time = new Date(w.created_at).toLocaleTimeString();
+
+                return `
+                    <div class="activity-item" onclick="showWorkflowDetail('${w.id}')">
+                        <div class="activity-icon ${iconClass}">${icon}</div>
+                        <div class="activity-content">
+                            <div class="activity-title">Workflow #${w.id}</div>
+                            <div class="activity-time">${time} - ${w.status}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============== PROVIDERS ==============
+        async function loadProviders() {
             try {
-                const response = await fetch(`/api/providers/ollama/models`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({host, port})
-                });
+                const res = await fetch('/api/registry/providers');
+                const data = await res.json();
+                AppState.providers = data.providers || {};
 
-                const data = await response.json();
+                const list = document.getElementById('provider-list');
+                const empty = document.getElementById('no-providers');
 
-                if (data.models && data.models.error) {
-                    showToast('Could not connect to Ollama. Make sure it is running.', 'error');
+                if (Object.keys(AppState.providers).length === 0) {
+                    list.style.display = 'none';
+                    empty.style.display = 'block';
                     return;
                 }
 
-                if (data.models && data.models.length > 0) {
-                    showModelSelection(data.models);
-                } else {
-                    showToast('No Ollama models found. Pull a model first with: ollama pull llama3', 'error');
-                }
-            } catch (error) {
-                showToast('Failed to connect to Ollama: ' + error.message, 'error');
-            }
-        }
+                list.style.display = 'grid';
+                empty.style.display = 'none';
 
-        // Show model selection
-        function showModelSelection(models) {
-            const list = document.getElementById('model-list');
-            list.innerHTML = '';
+                list.innerHTML = Object.entries(AppState.providers).map(([name, config]) => {
+                    const typeClass = config.type || 'custom';
+                    const initial = (config.type || 'C')[0].toUpperCase();
 
-            models.forEach(model => {
-                const card = document.createElement('div');
-                card.className = 'model-card';
-                card.onclick = () => selectModel(model);
-
-                const freeBadge = model.free ? '<span class="badge badge-free">FREE</span>' : '';
-                const context = model.context_length ? `<span class="model-context">${model.context_length.toLocaleString()} tokens</span>` : '';
-
-                card.innerHTML = `
-                    <div class="model-info">
-                        <span class="model-name">${model.name || model.id}</span>
-                        ${freeBadge}
-                    </div>
-                    <span class="model-id">${model.id}</span>
-                    ${context}
-                `;
-
-                list.appendChild(card);
-            });
-
-            // For Z.AI, show static models directly
-            if (selectedProvider === 'zai' && !models.length) {
-                PROVIDERS.zai.models.forEach(model => {
-                    const card = document.createElement('div');
-                    card.className = 'model-card';
-                    card.onclick = () => selectModel(model);
-
-                    card.innerHTML = `
-                        <div class="model-info">
-                            <span class="model-name">${model.name}</span>
-                            <span class="badge badge-type">${model.type}</span>
+                    return `
+                        <div class="provider-card" data-name="${name}">
+                            <div class="provider-info">
+                                <div class="provider-avatar ${typeClass}">${initial}</div>
+                                <div>
+                                    <div class="provider-name">${name}</div>
+                                    <div class="provider-meta">
+                                        <span class="provider-type-badge">${config.type || 'custom'}</span>
+                                        <span>${config.default_model || 'default'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="provider-actions">
+                                <button class="btn btn-ghost btn-sm" onclick="testProvider('${name}')">Test</button>
+                                <button class="btn btn-ghost btn-sm" onclick="viewProviderModels('${name}')">Models</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteProvider('${name}')">Delete</button>
+                            </div>
                         </div>
-                        <span class="model-id">${model.id}</span>
                     `;
-
-                    list.appendChild(card);
-                });
+                }).join('');
+            } catch (error) {
+                showToast('Failed to load providers: ' + error.message, 'error');
             }
-
-            showScreen('model-screen');
         }
 
-        // Select model
-        function selectModel(model) {
-            selectedModel = model;
+        function updateProviderFields() {
+            const type = document.querySelector('[name="type"]').value;
+            const container = document.getElementById('provider-dynamic-fields');
 
-            // Highlight selected
-            document.querySelectorAll('.model-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-            event.currentTarget.classList.add('selected');
-
-            // Store config data
-            configData.model = model.id;
-        }
-
-        // Save configuration
-        async function saveConfiguration() {
-            const provider = PROVIDERS[selectedProvider];
-
-            // Collect form data
-            if (provider.custom) {
-                configData = {
-                    provider: selectedProvider,
-                    api_key: document.getElementById('api-key')?.value,
-                    base_url: document.getElementById('base-url')?.value,
-                    haiku_model: document.getElementById('haiku-model')?.value,
-                    sonnet_model: document.getElementById('sonnet-model')?.value,
-                    opus_model: document.getElementById('opus-model')?.value
-                };
-            } else if (provider.local) {
-                configData = {
-                    provider: selectedProvider,
-                    host: document.getElementById('ollama-host')?.value,
-                    port: document.getElementById('ollama-port')?.value
-                };
+            if (type === 'anthropic') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">API Key</label>
+                        <input class="form-input" name="api_key" type="password" placeholder="sk-ant-..." required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Model</label>
+                        <select class="form-select" name="default_model">
+                            <option value="claude-sonnet-4-6-20250929">Claude Sonnet 4.6</option>
+                            <option value="claude-opus-4-6-20250929">Claude Opus 4.6</option>
+                            <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                        </select>
+                    </div>
+                `;
+            } else if (type === 'zai') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">API Key</label>
+                        <input class="form-input" name="api_key" type="password" placeholder="Your Z.AI API key" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Model</label>
+                        <select class="form-select" name="default_model">
+                            <option value="glm-4.7">GLM-4.7 (Balanced)</option>
+                            <option value="glm-5">GLM-5 (Latest)</option>
+                            <option value="glm-4.5-air">GLM-4.5-Air (Fast)</option>
+                        </select>
+                    </div>
+                `;
+            } else if (type === 'ollama') {
+                container.innerHTML = `
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Host</label>
+                            <input class="form-input" name="host" value="host.docker.internal">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Port</label>
+                            <input class="form-input" name="port" type="number" value="11434">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Model</label>
+                        <input class="form-input" name="default_model" placeholder="llama3">
+                    </div>
+                `;
+            } else if (type === 'openrouter') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">API Key</label>
+                        <input class="form-input" name="api_key" type="password" placeholder="sk-or-..." required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Model</label>
+                        <input class="form-input" name="default_model" placeholder="anthropic/claude-sonnet">
+                    </div>
+                `;
+            } else if (type === 'nvidia') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">API Key</label>
+                        <input class="form-input" name="api_key" type="password" placeholder="nvapi-..." required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Model</label>
+                        <input class="form-input" name="default_model" placeholder="meta/llama-3.1-8b-instruct">
+                    </div>
+                `;
+            } else if (type === 'custom') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">API Key</label>
+                        <input class="form-input" name="api_key" type="password">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Base URL</label>
+                        <input class="form-input" name="base_url" placeholder="https://api.example.com/v1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Default Model</label>
+                        <input class="form-input" name="default_model" placeholder="model-name">
+                    </div>
+                `;
             } else {
-                configData = {
-                    provider: selectedProvider,
-                    api_key: document.getElementById('api-key')?.value
-                };
-            }
-
-            // For providers with models endpoint, fetch models
-            if (provider.models_endpoint) {
-                await fetchModels();
-                return;
-            }
-
-            // For Z.AI, show static models
-            if (selectedProvider === 'zai') {
-                showModelSelection(provider.models);
-                return;
-            }
-
-            // For Ollama, fetch local models
-            if (selectedProvider === 'ollama') {
-                await fetchOllamaModels();
-                return;
-            }
-
-            // For custom, save directly
-            if (provider.custom) {
-                await finalSave();
+                container.innerHTML = '';
             }
         }
 
-        // Final save
-        async function finalSave() {
-            if (!configData.model && selectedProvider !== 'custom') {
-                showToast('Please select a model', 'error');
-                return;
-            }
+        async function validateProviderForm() {
+            const form = document.getElementById('provider-form');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
 
-            showToast('Saving configuration...', 'info');
+            showToast('Validating provider...', 'info');
 
             try {
-                const response = await fetch('/api/config', {
+                const res = await fetch('/api/registry/providers/validate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(configData)
+                    body: JSON.stringify(data)
                 });
+                const result = await res.json();
 
-                const data = await response.json();
-
-                if (data.success) {
-                    document.getElementById('success-message').textContent = data.message;
-                    showScreen('success-screen');
-                    showToast('Configuration saved!', 'success');
+                if (result.valid) {
+                    showToast('Provider validated successfully!', 'success');
                 } else {
-                    showToast(data.error || 'Failed to save configuration', 'error');
+                    showToast('Validation failed: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Validation error: ' + error.message, 'error');
+            }
+        }
+
+        async function saveProvider(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+
+            showToast('Saving provider...', 'info');
+
+            try {
+                const res = await fetch('/api/registry/providers', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast(`Provider "${data.name}" saved!`, 'success');
+                    closeModal('modal-provider');
+                    loadProviders();
+                    form.reset();
+                    document.getElementById('provider-dynamic-fields').innerHTML = '';
+                } else {
+                    showToast(result.error || 'Failed to save', 'error');
                 }
             } catch (error) {
                 showToast('Failed to save: ' + error.message, 'error');
             }
         }
 
-        // Reset wizard
-        function resetWizard() {
-            selectedProvider = null;
-            configData = {};
-            selectedModel = null;
-            showScreen('welcome-screen');
-        }
+        async function deleteProvider(name) {
+            if (!confirm(`Delete provider "${name}"?`)) return;
 
-        // Show current config
-        async function showCurrentConfig() {
             try {
-                const response = await fetch('/api/config');
-                const data = await response.json();
-
-                if (data.config) {
-                    const env = data.config.env || {};
-                    showToast(`Provider: ${data.provider || 'Unknown'}`, 'info');
-                    console.log('Current config:', env);
+                const res = await fetch(`/api/registry/providers/${name}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast(`Provider "${name}" deleted`, 'success');
+                    loadProviders();
                 }
             } catch (error) {
-                showToast('Could not load config', 'error');
+                showToast('Failed to delete: ' + error.message, 'error');
             }
         }
 
-        // Copy code
-        function copyCode(text) {
-            navigator.clipboard.writeText(text);
-            showToast('Copied to clipboard!', 'success');
+        async function testProvider(name) {
+            showToast(`Testing provider "${name}"...`, 'info');
+
+            const provider = AppState.providers[name];
+            if (!provider) {
+                showToast('Provider not found', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/registry/providers/validate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ type: provider.type, ...provider })
+                });
+                const result = await res.json();
+
+                if (result.valid) {
+                    showToast(`Provider "${name}" is working!`, 'success');
+                } else {
+                    showToast(`Test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast('Test error: ' + error.message, 'error');
+            }
         }
 
-        // Toast notifications
+        async function viewProviderModels(name) {
+            try {
+                const res = await fetch(`/api/registry/providers/${name}/models`);
+                const data = await res.json();
+
+                if (data.models && data.models.length > 0) {
+                    const modelList = data.models.map(m => `- ${m.name || m.id}`).join('\n');
+                    showToast(`Models for ${name}:\n${modelList}`, 'info');
+                } else {
+                    showToast('No models found for this provider', 'info');
+                }
+            } catch (error) {
+                showToast('Failed to fetch models: ' + error.message, 'error');
+            }
+        }
+
+        // ============== WORKFLOWS ==============
+        async function loadWorkflows() {
+            try {
+                const res = await fetch('/api/orchestrate');
+                const data = await res.json();
+                AppState.workflows = data.workflows || [];
+
+                renderWorkflowList(AppState.workflows);
+            } catch (error) {
+                showToast('Failed to load workflows: ' + error.message, 'error');
+            }
+        }
+
+        function renderWorkflowList(workflows) {
+            const list = document.getElementById('workflow-list');
+            const empty = document.getElementById('no-workflows');
+
+            if (workflows.length === 0) {
+                list.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+
+            list.innerHTML = workflows.map(w => {
+                const taskDots = Object.values(w.tasks || {}).map(t =>
+                    `<span class="task-dot ${t.status}" title="${t.id}: ${t.status}"></span>`
+                ).join('');
+
+                return `
+                    <div class="workflow-card ${w.status}" onclick="showWorkflowDetail('${w.id}')">
+                        <div class="workflow-header">
+                            <span class="workflow-id">#${w.id}</span>
+                            <span class="workflow-mode">${w.mode}</span>
+                        </div>
+                        <div class="workflow-tasks">
+                            ${taskDots}
+                        </div>
+                        <div class="workflow-meta">
+                            <span>${Object.keys(w.tasks || {}).length} tasks</span>
+                            <span>${w.status}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterWorkflows(filter) {
+            if (filter === 'all') {
+                renderWorkflowList(AppState.workflows);
+            } else {
+                const filtered = AppState.workflows.filter(w => w.status === filter);
+                renderWorkflowList(filtered);
+            }
+        }
+
+        async function createWorkflow(e) {
+            e.preventDefault();
+            const form = e.target;
+
+            const tasks = [];
+            document.querySelectorAll('.task-row').forEach(row => {
+                const idInput = row.querySelector('[name="task_id"]');
+                const promptInput = row.querySelector('[name="task_prompt"]');
+                const providerInput = row.querySelector('[name="task_provider"]');
+                const dirInput = row.querySelector('[name="task_dir"]');
+                const timeoutInput = row.querySelector('[name="task_timeout"]');
+                const depsInput = row.querySelector('[name="task_deps"]');
+
+                if (idInput && promptInput && promptInput.value.trim()) {
+                    tasks.push({
+                        id: idInput.value,
+                        prompt: promptInput.value,
+                        provider: providerInput?.value || null,
+                        working_dir: dirInput?.value || '/home/claude/projects',
+                        timeout: parseInt(timeoutInput?.value) || 300,
+                        depends_on: depsInput?.value.split(',').map(s => s.trim()).filter(Boolean) || []
+                    });
+                }
+            });
+
+            if (tasks.length === 0) {
+                showToast('Please add at least one task', 'error');
+                return;
+            }
+
+            const payload = {
+                mode: form.mode.value,
+                tasks,
+                options: {
+                    max_parallel: parseInt(form.max_parallel.value) || 3,
+                    stop_on_failure: true
+                }
+            };
+
+            showToast('Creating workflow...', 'info');
+
+            try {
+                const res = await fetch('/api/orchestrate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (result.workflow_id) {
+                    showToast(`Workflow ${result.workflow_id} started!`, 'success');
+                    closeModal('modal-workflow');
+                    showWorkflowDetail(result.workflow_id);
+                } else {
+                    showToast(result.error || 'Failed to create workflow', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to create workflow: ' + error.message, 'error');
+            }
+        }
+
+        // ============== WORKFLOW DETAIL & REAL-TIME ==============
+        async function showWorkflowDetail(id) {
+            try {
+                const res = await fetch(`/api/orchestrate/${id}`);
+                const workflow = await res.json();
+
+                if (workflow.error) {
+                    showToast('Workflow not found', 'error');
+                    return;
+                }
+
+                AppState.currentWorkflow = workflow;
+
+                // Update UI
+                document.getElementById('detail-id').textContent = workflow.id;
+                const statusEl = document.getElementById('detail-status');
+                statusEl.textContent = workflow.status;
+                statusEl.className = `workflow-status-badge ${workflow.status}`;
+
+                // Render tasks
+                const tasksEl = document.getElementById('detail-tasks');
+                tasksEl.innerHTML = Object.entries(workflow.tasks || {}).map(([tid, task]) => {
+                    const statusIcon = task.status === 'completed' ? '✓' : task.status === 'running' ? '◐' : task.status === 'failed' ? '✕' : '○';
+
+                    return `
+                        <div class="task-item ${task.status}" data-task="${tid}">
+                            <div class="task-status-indicator ${task.status}">${statusIcon}</div>
+                            <div class="task-content">
+                                <div class="task-id">${tid}</div>
+                                <div class="task-prompt">${(task.prompt || '').substring(0, 150)}${task.prompt && task.prompt.length > 150 ? '...' : ''}</div>
+                                ${task.output ? `<pre class="task-output">${task.output.substring(0, 500)}${task.output.length > 500 ? '...' : ''}</pre>` : ''}
+                                ${task.error ? `<div class="task-error">${task.error}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Output
+                document.getElementById('detail-output').textContent = workflow.merged_output || 'No output yet';
+
+                // Show/hide action buttons
+                document.getElementById('btn-retry').style.display = workflow.status === 'failed' ? 'inline-flex' : 'none';
+                document.getElementById('btn-cancel').style.display = workflow.status === 'running' ? 'inline-flex' : 'none';
+
+                showView('workflow-detail');
+
+                // Subscribe to real-time updates if running
+                if (workflow.status === 'running') {
+                    subscribeToWorkflow(id);
+                }
+            } catch (error) {
+                showToast('Failed to load workflow: ' + error.message, 'error');
+            }
+        }
+
+        function subscribeToWorkflow(workflowId) {
+            // Close existing connection
+            if (AppState.activeEventSource) {
+                AppState.activeEventSource.close();
+            }
+
+            const es = new EventSource(`/api/orchestrate/${workflowId}/stream`);
+            AppState.activeEventSource = es;
+
+            es.addEventListener('update', (event) => {
+                const data = JSON.parse(event.data);
+                updateWorkflowUI(data);
+            });
+
+            es.addEventListener('complete', (event) => {
+                const data = JSON.parse(event.data);
+                updateWorkflowUI(data);
+                es.close();
+                showToast('Workflow completed!', 'success');
+            });
+
+            es.onerror = () => {
+                es.close();
+            };
+        }
+
+        function updateWorkflowUI(workflow) {
+            // Update task statuses without full re-render
+            Object.entries(workflow.tasks || {}).forEach(([tid, task]) => {
+                const el = document.querySelector(`.task-item[data-task="${tid}"]`);
+                if (el) {
+                    el.className = `task-item ${task.status}`;
+                    const indicator = el.querySelector('.task-status-indicator');
+                    if (indicator) {
+                        indicator.className = `task-status-indicator ${task.status}`;
+                        const icon = task.status === 'completed' ? '✓' : task.status === 'running' ? '◐' : task.status === 'failed' ? '✕' : '○';
+                        indicator.textContent = icon;
+                    }
+                }
+            });
+
+            // Update status badge
+            const statusEl = document.getElementById('detail-status');
+            statusEl.textContent = workflow.status;
+            statusEl.className = `workflow-status-badge ${workflow.status}`;
+
+            // Update output if completed
+            if (workflow.merged_output) {
+                document.getElementById('detail-output').textContent = workflow.merged_output;
+            }
+
+            // Update button visibility
+            document.getElementById('btn-retry').style.display = workflow.status === 'failed' ? 'inline-flex' : 'none';
+            document.getElementById('btn-cancel').style.display = workflow.status === 'running' ? 'inline-flex' : 'none';
+
+            AppState.currentWorkflow = workflow;
+        }
+
+        async function retryWorkflow() {
+            if (!AppState.currentWorkflow) return;
+
+            try {
+                const res = await fetch(`/api/orchestrate/${AppState.currentWorkflow.id}/retry`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast('Retrying failed tasks...', 'success');
+                    showWorkflowDetail(AppState.currentWorkflow.id);
+                } else {
+                    showToast(result.error || 'Failed to retry', 'error');
+                }
+            } catch (error) {
+                showToast('Retry error: ' + error.message, 'error');
+            }
+        }
+
+        async function cancelWorkflow() {
+            if (!AppState.currentWorkflow) return;
+            if (!confirm('Cancel this workflow?')) return;
+
+            try {
+                const res = await fetch(`/api/orchestrate/${AppState.currentWorkflow.id}`, {
+                    method: 'DELETE'
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast('Workflow cancelled', 'success');
+                    if (AppState.activeEventSource) {
+                        AppState.activeEventSource.close();
+                    }
+                    showView('workflows');
+                } else {
+                    showToast(result.error || 'Failed to cancel', 'error');
+                }
+            } catch (error) {
+                showToast('Cancel error: ' + error.message, 'error');
+            }
+        }
+
+        function copyOutput() {
+            const output = document.getElementById('detail-output').textContent;
+            navigator.clipboard.writeText(output);
+            showToast('Output copied to clipboard!', 'success');
+        }
+
+        // ============== TASK BUILDER ==============
+        function addTaskRow() {
+            const container = document.getElementById('tasks-container');
+            const id = ++taskCounter;
+
+            const providerOptions = Object.keys(AppState.providers).map(name =>
+                `<option value="${name}">${name}</option>`
+            ).join('');
+
+            const row = document.createElement('div');
+            row.className = 'task-row';
+            row.innerHTML = `
+                <div class="task-row-header">
+                    <span>Task ${id}</span>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.task-row').remove()">Remove</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ID</label>
+                        <input class="form-input" name="task_id" value="task-${id}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Provider</label>
+                        <select class="form-select" name="task_provider">
+                            <option value="">Default</option>
+                            ${providerOptions}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prompt</label>
+                    <textarea class="form-textarea" name="task_prompt" placeholder="What should this agent do?" required></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Working Dir</label>
+                        <input class="form-input" name="task_dir" value="/home/claude/projects">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Timeout (s)</label>
+                        <input class="form-input" type="number" name="task_timeout" value="300">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Depends On</label>
+                        <input class="form-input" name="task_deps" placeholder="task-1, task-2">
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(row);
+        }
+
+        // ============== MODALS ==============
+        function showModal(id) {
+            document.getElementById(id).classList.add('active');
+
+            // Populate provider dropdown for workflow form
+            if (id === 'modal-workflow') {
+                loadProviders().then(() => {
+                    // Add initial task row if none exist
+                    if (document.querySelectorAll('.task-row').length === 0) {
+                        addTaskRow();
+                    }
+                });
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+
+            // Reset task builder
+            if (id === 'modal-workflow') {
+                document.getElementById('tasks-container').innerHTML = '';
+                taskCounter = 0;
+            }
+        }
+
+        // ============== TOAST NOTIFICATIONS ==============
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
-            toast.textContent = message;
+
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+            toast.innerHTML = `
+                <span class="toast-icon">${icon}</span>
+                <span class="toast-message">${message}</span>
+            `;
             container.appendChild(toast);
 
             setTimeout(() => {
                 toast.classList.add('toast-exit');
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 4000);
         }
     </script>
 </body>

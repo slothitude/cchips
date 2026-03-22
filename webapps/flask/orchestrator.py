@@ -434,7 +434,14 @@ class Orchestrator:
         workflow = self.workflows.get(workflow_id)
         if not workflow:
             return None
-        return workflow.to_dict()
+
+        result = workflow.to_dict()
+
+        # Add merged output for completed workflows
+        if workflow.status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+            result["merged_output"] = self.get_merged_output(workflow_id)
+
+        return result
 
     def list_workflows(self) -> List[dict]:
         """List all workflows"""
@@ -451,6 +458,68 @@ class Orchestrator:
             if task.status == TaskStatus.PENDING:
                 task.status = TaskStatus.CANCELLED
 
+        return True
+
+    def retry_task(self, workflow_id: str, task_id: str = None) -> Optional[dict]:
+        """Retry failed task(s) in a workflow"""
+        workflow = self.workflows.get(workflow_id)
+        if not workflow:
+            return None
+
+        if task_id:
+            # Retry specific task
+            task = workflow.tasks.get(task_id)
+            if task and task.status == TaskStatus.FAILED:
+                task.status = TaskStatus.PENDING
+                task.error = ""
+                task.output = ""
+                # Re-execute in thread
+                self.executor.submit(self._execute_task, workflow, task, {})
+                return task.to_dict()
+        else:
+            # Retry all failed tasks
+            retried = []
+            for tid, task in workflow.tasks.items():
+                if task.status == TaskStatus.FAILED:
+                    task.status = TaskStatus.PENDING
+                    task.error = ""
+                    task.output = ""
+                    self.executor.submit(self._execute_task, workflow, task, {})
+                    retried.append(tid)
+
+            if retried:
+                # Update workflow status if we retried
+                if workflow.status == TaskStatus.FAILED:
+                    workflow.status = TaskStatus.RUNNING
+                return {"status": "retrying", "tasks": retried}
+
+        return None
+
+    def pause_workflow(self, workflow_id: str) -> bool:
+        """Pause a running workflow"""
+        workflow = self.workflows.get(workflow_id)
+        if not workflow or workflow.status != TaskStatus.RUNNING:
+            return False
+
+        # Mark workflow as pending (paused)
+        workflow.status = TaskStatus.PENDING
+        return True
+
+    def resume_workflow(self, workflow_id: str) -> bool:
+        """Resume a paused workflow"""
+        workflow = self.workflows.get(workflow_id)
+        if not workflow or workflow.status != TaskStatus.PENDING:
+            return False
+
+        # Check if there are pending tasks
+        has_pending = any(t.status == TaskStatus.PENDING for t in workflow.tasks.values())
+        if not has_pending:
+            return False
+
+        # Re-execute with remaining tasks
+        thread = threading.Thread(target=self.execute_workflow, args=(workflow_id,))
+        thread.daemon = True
+        thread.start()
         return True
 
     def delete_workflow(self, workflow_id: str) -> bool:
