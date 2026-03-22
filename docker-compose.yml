@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Single-port deployment - all services via nginx reverse proxy
 # Port 80 serves: UI, API, Wrapper API, Search, ttyd Web Terminal
 #
