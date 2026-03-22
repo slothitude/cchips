@@ -1,0 +1,86 @@
+# Multi-Instance Deployment Examples
+# Each instance exposes a single port
+
+services:
+  # Instance 1: Z.AI - Port 8001
+  claude-zai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: claude-zai
+    ports:
+      - "8001:80"
+      - "2201:22"
+    volumes:
+      - ./data-zai:/home/claude
+    environment:
+      - AGENT_API_TOKEN=${ZAI_TOKEN:-}
+      - INSTANCE_NAME=zai
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # Instance 2: OpenRouter - Port 8002
+  claude-openrouter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: claude-openrouter
+    ports:
+      - "8002:80"
+      - "2202:22"
+    volumes:
+      - ./data-openrouter:/home/claude
+    environment:
+      - AGENT_API_TOKEN=${OPENROUTER_TOKEN:-}
+      - INSTANCE_NAME=openrouter
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # Instance 3: NVIDIA - Port 8003
+  claude-nvidia:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: claude-nvidia
+    ports:
+      - "8003:80"
+      - "2203:22"
+    volumes:
+      - ./data-nvidia:/home/claude
+    environment:
+      - AGENT_API_TOKEN=${NVIDIA_TOKEN:-}
+      - INSTANCE_NAME=nvidia
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # Instance 4: Ollama - Port 8004
+  claude-ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: claude-ollama
+    ports:
+      - "8004:80"
+      - "2204:22"
+    volumes:
+      - ./data-ollama:/home/claude
+    environment:
+      - AGENT_API_TOKEN=${OLLAMA_TOKEN:-}
+      - INSTANCE_NAME=ollama
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+# Usage:
+# docker-compose -f docker-compose.multi.yml up -d claude-zai
+# docker-compose -f docker-compose.multi.yml up -d claude-openrouter
+# docker-compose -f docker-compose.multi.yml up -d  # Start all
+#
+# Access:
+#   Z.AI:        http://localhost:8001
+#   OpenRouter:  http://localhost:8002
+#   NVIDIA:      http://localhost:8003
+#   Ollama:      http://localhost:8004

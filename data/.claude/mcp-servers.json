@@ -1,0 +1,77 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/claude/projects"
+      ],
+      "description": "File system access for projects directory"
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub API access - set GITHUB_TOKEN env var"
+    },
+    "sqlite": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite"
+      ],
+      "description": "SQLite database access"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch"
+      ],
+      "description": "Web fetching capabilities"
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "description": "Persistent memory for conversations"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      },
+      "description": "Brave search - set BRAVE_API_KEY env var"
+    },
+    "searxng": {
+      "command": "python3",
+      "args": [
+        "/home/claude/mcp-servers/searxng-mcp.py"
+      ],
+      "description": "Local SearXNG search via MCP"
+    },
+    "claude-agent-self": {
+      "command": "python3",
+      "args": [
+        "/home/claude/webapps/flask/agent_mcp.py"
+      ],
+      "env": {
+        "AGENT_API_URL": "http://localhost:5001",
+        "AGENT_API_TOKEN": "${AGENT_API_TOKEN}"
+      },
+      "description": "Self-reference as subagent via MCP - enables recursive agent calls"
+    }
+  }
+}

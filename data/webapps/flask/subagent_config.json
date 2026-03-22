@@ -1,0 +1,77 @@
+{
+  "name": "claude-code-agent",
+  "version": "1.0.0",
+  "description": "Claude Code as a headless agent service",
+  "capabilities": [
+    "code_generation",
+    "code_analysis",
+    "file_operations",
+    "git_operations",
+    "web_search",
+    "command_execution"
+  ],
+  "endpoints": {
+    "openai_compatible": {
+      "base_url": "http://localhost:5001/v1",
+      "chat": "/chat/completions",
+      "models": "/models"
+    },
+    "agent_api": {
+      "base_url": "http://localhost:5001/v1/agent",
+      "execute": "/execute",
+      "task": "/task",
+      "status": "/status",
+      "configure": "/configure"
+    }
+  },
+  "auth": {
+    "type": "bearer",
+    "header": "Authorization",
+    "prefix": "Bearer ",
+    "alt_header": "X-API-Token"
+  },
+  "subagent_integration": {
+    "anthropic_claude_code": {
+      "description": "Use this agent from Claude Code via MCP or API calls",
+      "mcp_config": {
+        "command": "python3",
+        "args": ["/home/claude/webapps/flask/agent_mcp.py"],
+        "env": {}
+      }
+    },
+    "openai_agents": {
+      "description": "OpenAI-compatible API for integration with OpenAI agents",
+      "example": {
+        "client": "OpenAI(base_url='http://localhost:5001/v1', api_key='dummy')",
+        "response": "client.chat.completions.create(model='claude-code', messages=[...])"
+      }
+    },
+    "langchain": {
+      "description": "Use with LangChain via ChatOpenAI",
+      "example": {
+        "from": "langchain_openai import ChatOpenAI",
+        "llm": "ChatOpenAI(base_url='http://localhost:5001/v1', api_key='dummy')"
+      }
+    }
+  },
+  "environment_variables": {
+    "AGENT_API_TOKEN": {
+      "description": "API authentication token (optional)",
+      "default": "",
+      "required": false
+    },
+    "AGENT_PORT": {
+      "description": "Port for agent API server",
+      "default": "5001",
+      "required": false
+    },
+    "ANTHROPIC_BASE_URL": {
+      "description": "LLM provider base URL",
+      "required": true
+    },
+    "ANTHROPIC_API_KEY": {
+      "description": "LLM provider API key",
+      "required": true
+    }
+  }
+}

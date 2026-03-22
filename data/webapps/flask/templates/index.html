@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code - LLM Provider Setup</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect width="32" height="32" rx="8" fill="#D97706"/>
+                        <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" fill="white"/>
+                        <circle cx="16" cy="16" r="4" fill="#D97706"/>
+                    </svg>
+                    <span>Claude Code</span>
+                </div>
+                <div class="header-info">
+                    <span class="hostname" id="hostname">{{ system_info.hostname }}</span>
+                    <span class="status-badge" id="status-badge">Ready</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="screen active">
+                <div class="welcome-container">
+                    <h1>Welcome to Claude Code</h1>
+                    <p class="subtitle">Configure your LLM provider to get started</p>
+
+                    <div class="service-grid">
+                        <div class="service-card">
+                            <div class="service-icon">🤖</div>
+                            <h3>Claude API</h3>
+                            <p>OpenAI/Anthropic Compatible</p>
+                            <a href="/wrapper/" target="_blank" class="service-link">
+                                API Explorer →
+                            </a>
+                        </div>
+                        <div class="service-card">
+                            <div class="service-icon">🔍</div>
+                            <h3>SearXNG</h3>
+                            <p>Privacy Search</p>
+                            <a href="/search/" target="_blank" class="service-link">
+                                Open Search →
+                            </a>
+                        </div>
+                        <div class="service-card">
+                            <div class="service-icon">🌐</div>
+                            <h3>SSHwifty</h3>
+                            <p>Web Terminal</p>
+                            <a href="/ssh/#preset:Docker%20Container" target="_blank" class="service-link">
+                                Open Terminal →
+                            </a>
+                        </div>
+                        <div class="service-card">
+                            <div class="service-icon">📁</div>
+                            <h3>Samba</h3>
+                            <p>File Sharing</p>
+                            <span class="service-link">Ports 139, 445</span>
+                        </div>
+                        <div class="service-card">
+                            <div class="service-icon">🔐</div>
+                            <h3>SSH/SFTP</h3>
+                            <p>Secure Access</p>
+                            <span class="service-link">Port {{ system_info.ports.ssh }}</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-large" onclick="startWizard()">
+                        Configure LLM Provider
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M7 4L14 10L7 16V4Z"/>
+                        </svg>
+                    </button>
+
+                    {% if current_provider %}
+                    <p class="current-config">
+                        Current provider: <strong>{{ current_provider }}</strong>
+                        <button class="btn btn-small" onclick="showCurrentConfig()">View Config</button>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Provider Selection -->
+            <div id="provider-screen" class="screen">
+                <div class="wizard-container">
+                    <div class="wizard-header">
+                        <h2>Select LLM Provider</h2>
+                        <p>Choose your preferred AI provider</p>
+                    </div>
+
+                    <div class="provider-grid" id="provider-grid">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="wizard-nav">
+                        <button class="btn btn-secondary" onclick="showScreen('welcome-screen')">Back</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Screen -->
+            <div id="config-screen" class="screen">
+                <div class="wizard-container">
+                    <div class="wizard-header">
+                        <button class="btn btn-back" onclick="showScreen('provider-screen')">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M10 4L6 8L10 12V4Z"/>
+                            </svg>
+                        </button>
+                        <div>
+                            <h2 id="config-title">Configure Provider</h2>
+                            <p id="config-subtitle">Enter your credentials</p>
+                        </div>
+                    </div>
+
+                    <div class="config-form" id="config-form">
+                        <!-- Populated by JS based on provider -->
+                    </div>
+
+                    <div class="wizard-nav">
+                        <button class="btn btn-secondary" onclick="showScreen('provider-screen')">Back</button>
+                        <button class="btn btn-primary" id="save-config-btn" onclick="saveConfiguration()">
+                            Save Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Selection Screen -->
+            <div id="model-screen" class="screen">
+                <div class="wizard-container">
+                    <div class="wizard-header">
+                        <button class="btn btn-back" onclick="showScreen('config-screen')">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M10 4L6 8L10 12V4Z"/>
+                            </svg>
+                        </button>
+                        <div>
+                            <h2>Select Model</h2>
+                            <p id="model-subtitle">Choose the model to use</p>
+                        </div>
+                    </div>
+
+                    <div class="model-list" id="model-list">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="wizard-nav">
+                        <button class="btn btn-secondary" onclick="showScreen('config-screen')">Back</button>
+                        <button class="btn btn-primary" id="final-save-btn" onclick="finalSave()">
+                            Complete Setup
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Screen -->
+            <div id="success-screen" class="screen">
+                <div class="success-container">
+                    <div class="success-icon">
+                        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                            <circle cx="32" cy="32" r="30" stroke="#10B981" stroke-width="4"/>
+                            <path d="M20 32L28 40L44 24" stroke="#10B981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2>Setup Complete!</h2>
+                    <p id="success-message">Your LLM provider has been configured.</p>
+
+                    <div class="next-steps">
+                        <h3>Next Steps</h3>
+                        <div class="code-block">
+                            <code># Start Claude Code<br>claude</code>
+                            <button class="btn btn-small btn-copy" onclick="copyCode('claude')">Copy</button>
+                        </div>
+                        <div class="code-block">
+                            <code># Or use the interactive setup<br>claude-setup</code>
+                            <button class="btn btn-small btn-copy" onclick="copyCode('claude-setup')">Copy</button>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="resetWizard()">Configure Another Provider</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <span>Claude Code Docker Container</span>
+                <span class="separator">|</span>
+                <span>Flask: {{ system_info.ports.flask }}</span>
+                <span class="separator">|</span>
+                <a href="/api/health">API Health</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <script>
+        // Provider data from server
+        const PROVIDERS = {{ providers | tojson | safe }};
+        let selectedProvider = null;
+        let configData = {};
+        let selectedModel = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProviders();
+        });
+
+        // Screen navigation
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Start wizard
+        function startWizard() {
+            showScreen('provider-screen');
+        }
+
+        // Render provider cards
+        function renderProviders() {
+            const grid = document.getElementById('provider-grid');
+            grid.innerHTML = '';
+
+            Object.entries(PROVIDERS).forEach(([id, provider]) => {
+                const card = document.createElement('div');
+                card.className = 'provider-card';
+                card.onclick = () => selectProvider(id);
+
+                const badge = provider.free_only ? '<span class="badge badge-free">FREE Models</span>' : '';
+                const localBadge = provider.local ? '<span class="badge badge-local">LOCAL</span>' : '';
+
+                card.innerHTML = `
+                    <div class="provider-header">
+                        <h3>${provider.name}</h3>
+                        ${badge}${localBadge}
+                    </div>
+                    <p>${provider.description}</p>
+                    ${provider.api_key_url ? `<a href="${provider.api_key_url}" target="_blank" class="api-link">Get API Key →</a>` : ''}
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        // Select provider
+        function selectProvider(providerId) {
+            selectedProvider = providerId;
+            const provider = PROVIDERS[providerId];
+
+            document.getElementById('config-title').textContent = `Configure ${provider.name}`;
+            document.getElementById('config-subtitle').textContent = provider.description;
+
+            renderConfigForm(provider);
+            showScreen('config-screen');
+        }
+
+        // Render configuration form
+        function renderConfigForm(provider) {
+            const form = document.getElementById('config-form');
+            let html = '';
+
+            if (provider.custom) {
+                html = `
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="password" id="api-key" placeholder="Enter your API key">
+                    </div>
+                    <div class="form-group">
+                        <label>Base URL</label>
+                        <input type="text" id="base-url" placeholder="https://api.example.com/v1">
+                    </div>
+                    <div class="form-group">
+                        <label>Haiku Model</label>
+                        <input type="text" id="haiku-model" placeholder="model-haiku">
+                    </div>
+                    <div class="form-group">
+                        <label>Sonnet Model</label>
+                        <input type="text" id="sonnet-model" placeholder="model-sonnet">
+                    </div>
+                    <div class="form-group">
+                        <label>Opus Model</label>
+                        <input type="text" id="opus-model" placeholder="model-opus">
+                    </div>
+                `;
+            } else if (provider.local) {
+                html = `
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Ollama Host</label>
+                            <input type="text" id="ollama-host" value="${provider.default_host}" placeholder="host.docker.internal">
+                        </div>
+                        <div class="form-group">
+                            <label>Port</label>
+                            <input type="number" id="ollama-port" value="${provider.default_port}" placeholder="11434">
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="fetchOllamaModels()">
+                        Detect Models
+                    </button>
+                `;
+            } else {
+                html = `
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <div class="input-with-link">
+                            <input type="password" id="api-key" placeholder="Enter your API key">
+                            ${provider.api_key_url ? `<a href="${provider.api_key_url}" target="_blank" class="inline-link">Get Key</a>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                if (provider.models_endpoint) {
+                    html += `
+                        <button class="btn btn-secondary" onclick="fetchModels()">
+                            Fetch Available Models
+                        </button>
+                    `;
+                }
+            }
+
+            form.innerHTML = html;
+        }
+
+        // Fetch models from API
+        async function fetchModels() {
+            const apiKey = document.getElementById('api-key')?.value;
+            if (!apiKey) {
+                showToast('Please enter an API key first', 'error');
+                return;
+            }
+
+            showToast('Fetching models...', 'info');
+
+            try {
+                const response = await fetch(`/api/providers/${selectedProvider}/models`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({api_key: apiKey})
+                });
+
+                const data = await response.json();
+
+                if (data.models) {
+                    if (data.models.error) {
+                        showToast(data.models.error, 'error');
+                        return;
+                    }
+                    showModelSelection(data.models);
+                } else {
+                    showToast('No models found', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to fetch models: ' + error.message, 'error');
+            }
+        }
+
+        // Fetch Ollama models
+        async function fetchOllamaModels() {
+            const host = document.getElementById('ollama-host')?.value || 'host.docker.internal';
+            const port = document.getElementById('ollama-port')?.value || 11434;
+
+            showToast('Detecting Ollama models...', 'info');
+
+            try {
+                const response = await fetch(`/api/providers/ollama/models`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({host, port})
+                });
+
+                const data = await response.json();
+
+                if (data.models && data.models.error) {
+                    showToast('Could not connect to Ollama. Make sure it is running.', 'error');
+                    return;
+                }
+
+                if (data.models && data.models.length > 0) {
+                    showModelSelection(data.models);
+                } else {
+                    showToast('No Ollama models found. Pull a model first with: ollama pull llama3', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to connect to Ollama: ' + error.message, 'error');
+            }
+        }
+
+        // Show model selection
+        function showModelSelection(models) {
+            const list = document.getElementById('model-list');
+            list.innerHTML = '';
+
+            models.forEach(model => {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                card.onclick = () => selectModel(model);
+
+                const freeBadge = model.free ? '<span class="badge badge-free">FREE</span>' : '';
+                const context = model.context_length ? `<span class="model-context">${model.context_length.toLocaleString()} tokens</span>` : '';
+
+                card.innerHTML = `
+                    <div class="model-info">
+                        <span class="model-name">${model.name || model.id}</span>
+                        ${freeBadge}
+                    </div>
+                    <span class="model-id">${model.id}</span>
+                    ${context}
+                `;
+
+                list.appendChild(card);
+            });
+
+            // For Z.AI, show static models directly
+            if (selectedProvider === 'zai' && !models.length) {
+                PROVIDERS.zai.models.forEach(model => {
+                    const card = document.createElement('div');
+                    card.className = 'model-card';
+                    card.onclick = () => selectModel(model);
+
+                    card.innerHTML = `
+                        <div class="model-info">
+                            <span class="model-name">${model.name}</span>
+                            <span class="badge badge-type">${model.type}</span>
+                        </div>
+                        <span class="model-id">${model.id}</span>
+                    `;
+
+                    list.appendChild(card);
+                });
+            }
+
+            showScreen('model-screen');
+        }
+
+        // Select model
+        function selectModel(model) {
+            selectedModel = model;
+
+            // Highlight selected
+            document.querySelectorAll('.model-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            // Store config data
+            configData.model = model.id;
+        }
+
+        // Save configuration
+        async function saveConfiguration() {
+            const provider = PROVIDERS[selectedProvider];
+
+            // Collect form data
+            if (provider.custom) {
+                configData = {
+                    provider: selectedProvider,
+                    api_key: document.getElementById('api-key')?.value,
+                    base_url: document.getElementById('base-url')?.value,
+                    haiku_model: document.getElementById('haiku-model')?.value,
+                    sonnet_model: document.getElementById('sonnet-model')?.value,
+                    opus_model: document.getElementById('opus-model')?.value
+                };
+            } else if (provider.local) {
+                configData = {
+                    provider: selectedProvider,
+                    host: document.getElementById('ollama-host')?.value,
+                    port: document.getElementById('ollama-port')?.value
+                };
+            } else {
+                configData = {
+                    provider: selectedProvider,
+                    api_key: document.getElementById('api-key')?.value
+                };
+            }
+
+            // For providers with models endpoint, fetch models
+            if (provider.models_endpoint) {
+                await fetchModels();
+                return;
+            }
+
+            // For Z.AI, show static models
+            if (selectedProvider === 'zai') {
+                showModelSelection(provider.models);
+                return;
+            }
+
+            // For Ollama, fetch local models
+            if (selectedProvider === 'ollama') {
+                await fetchOllamaModels();
+                return;
+            }
+
+            // For custom, save directly
+            if (provider.custom) {
+                await finalSave();
+            }
+        }
+
+        // Final save
+        async function finalSave() {
+            if (!configData.model && selectedProvider !== 'custom') {
+                showToast('Please select a model', 'error');
+                return;
+            }
+
+            showToast('Saving configuration...', 'info');
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(configData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('success-message').textContent = data.message;
+                    showScreen('success-screen');
+                    showToast('Configuration saved!', 'success');
+                } else {
+                    showToast(data.error || 'Failed to save configuration', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save: ' + error.message, 'error');
+            }
+        }
+
+        // Reset wizard
+        function resetWizard() {
+            selectedProvider = null;
+            configData = {};
+            selectedModel = null;
+            showScreen('welcome-screen');
+        }
+
+        // Show current config
+        async function showCurrentConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+
+                if (data.config) {
+                    const env = data.config.env || {};
+                    showToast(`Provider: ${data.provider || 'Unknown'}`, 'info');
+                    console.log('Current config:', env);
+                }
+            } catch (error) {
+                showToast('Could not load config', 'error');
+            }
+        }
+
+        // Copy code
+        function copyCode(text) {
+            navigator.clipboard.writeText(text);
+            showToast('Copied to clipboard!', 'success');
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

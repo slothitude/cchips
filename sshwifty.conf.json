@@ -1,0 +1,26 @@
+{
+  "Servers": [
+    {
+      "ListenInterface": "0.0.0.0",
+      "ListenPort": 8182,
+      "InitialTimeout": 30,
+      "ReadTimeout": 15,
+      "WriteTimeout": 15,
+      "HeartbeatTimeout": 60,
+      "ReadDelay": 10,
+      "WriteDelay": 10,
+      "Presets": [
+        {
+          "Title": "Docker Container",
+          "Type": "SSH",
+          "Host": "localhost",
+          "Port": 22,
+          "User": "claude",
+          "Authentication": "Password",
+          "Password": "claude"
+        }
+      ],
+      "OnlyAllowPresetRemotes": true
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+use_default_settings: true
+
+general:
+  instance_name: "Claude Code Search"
+  debug: false
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "all"
+  formats:
+    - html
+    - json
+    - csv
+    - rss
+
+server:
+  port: 8888
+  bind_address: "0.0.0.0"
+  secret_key: "change_this_to_a_random_string_for_production"
+  base_url: "http://localhost:8888/"
+  image_proxy: true
+  http_protocol_version: "1.1"
+  method: "POST"
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+  pool_connections: 100
+  pool_maxsize: 20
+
+engines:
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+
+  - name: github
+    engine: github
+    shortcut: gh
+    disabled: false
+
+  - name: stackoverflow
+    engine: stackoverflow
+    shortcut: st
+    disabled: false
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    disabled: false
+
+  - name: youtube
+    engine: youtube_noapi
+    shortcut: yt
+    disabled: false
+
+ui:
+  static_use_hash: true
+  default_locale: "en"
+  query_in_title: false
+  infinite_scroll: false
+  center_alignment: true
+  default_theme: simple
+  theme_args:
+    simple_style: auto
+
+preferences:
+  lock: []
