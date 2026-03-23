@@ -19,6 +19,10 @@ import time
 # Import orchestrator
 from orchestrator import orchestrator
 
+# Import agent and library registries
+from agents import agent_registry
+from library import library_registry
+
 app = Flask(__name__,
             template_folder='templates',
             static_folder='static',
@@ -1247,11 +1251,376 @@ def resume_workflow(workflow_id):
     return jsonify({"error": "Cannot resume workflow"}), 400
 
 
+# ============== Telegram Bot Configuration ==============
+
+# Use absolute path to ensure config is in a persistent location
+TELEGRAM_CONFIG_FILE = "/home/claude/.claude/telegram.json"
+
+
+@app.route('/api/telegram/config', methods=['GET'])
+def get_telegram_config():
+    """Get Telegram bot configuration"""
+    if os.path.exists(TELEGRAM_CONFIG_FILE):
+        with open(TELEGRAM_CONFIG_FILE) as f:
+            config = json.load(f)
+            # Mask the token for security
+            if 'token' in config:
+                token = config['token']
+                config['token_masked'] = token[:8] + '...' + token[-4:] if len(token) > 12 else '***'
+                del config['token']
+            return jsonify({"success": True, "config": config})
+    return jsonify({"success": True, "config": {}})
+
+
+@app.route('/api/telegram/config', methods=['POST'])
+def save_telegram_config():
+    """Save Telegram bot configuration"""
+    data = request.get_json()
+    config = {}
+
+    # Load existing config
+    if os.path.exists(TELEGRAM_CONFIG_FILE):
+        with open(TELEGRAM_CONFIG_FILE) as f:
+            config = json.load(f)
+
+    # Update with new values
+    if 'token' in data:
+        config['token'] = data['token']
+    if 'allowed_users' in data:
+        config['allowed_users'] = data['allowed_users']
+    if 'admin_users' in data:
+        config['admin_users'] = data['admin_users']
+    if 'default_provider' in data:
+        config['default_provider'] = data['default_provider']
+    if 'enabled' in data:
+        config['enabled'] = data['enabled']
+
+    os.makedirs(CLAUDE_CONFIG_DIR, exist_ok=True)
+    with open(TELEGRAM_CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=2)
+
+    return jsonify({"success": True, "message": "Configuration saved. Restart required."})
+
+
+@app.route('/api/telegram/status', methods=['GET'])
+def get_telegram_status():
+    """Get Telegram bot status"""
+    config_exists = os.path.exists(TELEGRAM_CONFIG_FILE)
+    enabled = False
+    has_token = False
+
+    if config_exists:
+        with open(TELEGRAM_CONFIG_FILE) as f:
+            config = json.load(f)
+            enabled = config.get('enabled', False)
+            has_token = bool(config.get('token'))
+
+    return jsonify({
+        "configured": has_token,
+        "enabled": enabled and has_token,
+        "config_exists": config_exists
+    })
+
+
+@app.route('/api/telegram/test', methods=['POST'])
+def test_telegram():
+    """Test Telegram bot token"""
+    data = request.get_json()
+    token = data.get('token', '')
+
+    if not token:
+        return jsonify({"success": False, "error": "No token provided"})
+
+    try:
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/getMe",
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode())
+            if result.get('ok'):
+                bot_info = result.get('result', {})
+                return jsonify({
+                    "success": True,
+                    "bot_name": bot_info.get('first_name', ''),
+                    "bot_username": bot_info.get('username', '')
+                })
+            return jsonify({"success": False, "error": result.get('description', 'Unknown error')})
+    except urllib.error.HTTPError as e:
+        return jsonify({"success": False, "error": f"HTTP Error: {e.code}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/api/telegram/restart', methods=['POST'])
+def restart_telegram():
+    """Restart the Telegram bot"""
+    import signal
+    import subprocess
+
+    try:
+        # Kill any existing telegram bot processes
+        subprocess.run(['pkill', '-f', 'telegram_bot.py'], capture_output=True)
+
+        # Copy config from root if it exists there
+        root_config = "/root/.claude/telegram.json"
+        if os.path.exists(root_config) and not os.path.exists(TELEGRAM_CONFIG_FILE):
+            import shutil
+            os.makedirs(os.path.dirname(TELEGRAM_CONFIG_FILE), exist_ok=True)
+            shutil.copy(root_config, TELEGRAM_CONFIG_FILE)
+
+        # Check if config exists and is enabled
+        if not os.path.exists(TELEGRAM_CONFIG_FILE):
+            return jsonify({"success": False, "error": "No configuration found"})
+
+        with open(TELEGRAM_CONFIG_FILE) as f:
+            config = json.load(f)
+
+        if not config.get('enabled', False):
+            return jsonify({"success": False, "error": "Bot is disabled in configuration"})
+
+        if not config.get('token'):
+            return jsonify({"success": False, "error": "No bot token configured"})
+
+        # Start the bot
+        subprocess.Popen(
+            ['python3', '/home/claude/webapps/flask/telegram_bot.py'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+
+        return jsonify({"success": True, "message": "Telegram bot restarted"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 # ============== Static Routes ==============
 
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
+
+
+# ============== AGENT BUILDER API ==============
+
+@app.route('/api/agents', methods=['GET'])
+def list_agents():
+    """List all agents"""
+    agents = agent_registry.list_agents()
+    return jsonify({"agents": [a.to_dict() for a in agents]})
+
+
+@app.route('/api/agents/<agent_id>', methods=['GET'])
+def get_agent(agent_id):
+    """Get agent by ID"""
+    agent = agent_registry.get_agent(agent_id)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+    return jsonify(agent.to_dict())
+
+
+@app.route('/api/agents', methods=['POST'])
+def create_agent():
+    """Create a new agent"""
+    data = request.get_json()
+    agent = agent_registry.create_agent(data)
+    return jsonify({"success": True, "agent": agent.to_dict()})
+
+
+@app.route('/api/agents/<agent_id>', methods=['PUT'])
+def update_agent(agent_id):
+    """Update an agent"""
+    data = request.get_json()
+    agent = agent_registry.update_agent(agent_id, data)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+    return jsonify({"success": True, "agent": agent.to_dict()})
+
+
+@app.route('/api/agents/<agent_id>', methods=['DELETE'])
+def delete_agent(agent_id):
+    """Delete an agent"""
+    success = agent_registry.delete_agent(agent_id)
+    if not success:
+        return jsonify({"error": "Agent not found"}), 404
+    return jsonify({"success": True})
+
+
+@app.route('/api/agents/templates', methods=['GET'])
+def get_agent_templates():
+    """Get built-in agent templates"""
+    templates = agent_registry.get_builtin_agents()
+    return jsonify({"templates": templates})
+
+
+@app.route('/api/agents/<agent_id>/execute', methods=['POST'])
+def execute_agent(agent_id):
+    """Execute a task with an agent"""
+    agent = agent_registry.get_agent(agent_id)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+
+    data = request.get_json()
+    prompt = data.get('prompt', '')
+    working_dir = data.get('working_dir', '/home/claude/projects')
+
+    # Build enhanced prompt with skills
+    skill_instructions = []
+    for skill_id in agent.skills:
+        skill = agent_registry.get_skill(skill_id)
+        if skill:
+            skill_instructions.append(f"## {skill.name}\n{skill.instructions}")
+
+    full_prompt = prompt
+    if skill_instructions:
+        full_prompt = f"{prompt}\n\n### Applicable Skills:\n" + "\n\n".join(skill_instructions)
+
+    # Add system prompt as context
+    if agent.system_prompt:
+        full_prompt = f"System Context: {agent.system_prompt}\n\nTask: {full_prompt}"
+
+    # Create workflow with agent config
+    task_config = {
+        "id": "agent_task",
+        "prompt": full_prompt,
+        "working_dir": working_dir
+    }
+
+    if agent.provider:
+        task_config["provider"] = agent.provider
+
+    workflow = orchestrator.create_workflow(
+        mode=agent.workflow_template.get("mode", "parallel"),
+        tasks=[task_config],
+        options=agent.workflow_template.get("options", {})
+    )
+
+    # Execute in background
+    def run_workflow():
+        orchestrator.execute_workflow(workflow.id)
+
+    thread = threading.Thread(target=run_workflow)
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({"success": True, "workflow_id": workflow.id})
+
+
+# Skills API
+@app.route('/api/skills', methods=['GET'])
+def list_skills():
+    """List all skills"""
+    skills = agent_registry.list_skills()
+    builtin = agent_registry.get_builtin_skills()
+    return jsonify({
+        "skills": [s.to_dict() for s in skills],
+        "builtin": builtin
+    })
+
+
+@app.route('/api/skills', methods=['POST'])
+def create_skill():
+    """Create a new skill"""
+    data = request.get_json()
+    skill = agent_registry.create_skill(data)
+    return jsonify({"success": True, "skill": skill.to_dict()})
+
+
+@app.route('/api/skills/<skill_id>', methods=['DELETE'])
+def delete_skill(skill_id):
+    """Delete a skill"""
+    success = agent_registry.delete_skill(skill_id)
+    if not success:
+        return jsonify({"error": "Skill not found"}), 404
+    return jsonify({"success": True})
+
+
+# ============== SKILLS/MCP LIBRARY API ==============
+
+@app.route('/api/library/skills', methods=['GET'])
+def list_available_skills():
+    """List all available skills from catalog"""
+    skills = library_registry.list_available_skills()
+    return jsonify({"skills": skills})
+
+
+@app.route('/api/library/skills/installed', methods=['GET'])
+def list_installed_skills():
+    """List installed skills"""
+    skills = library_registry.get_installed_skills()
+    return jsonify({"skills": [s.to_dict() for s in skills]})
+
+
+@app.route('/api/library/skills/<skill_id>/install', methods=['POST'])
+def install_skill(skill_id):
+    """Install a skill"""
+    success = library_registry.install_skill(skill_id)
+    if success:
+        return jsonify({"success": True, "message": f"Skill {skill_id} installed"})
+    return jsonify({"error": "Skill not found in catalog"}), 404
+
+
+@app.route('/api/library/skills/<skill_id>/uninstall', methods=['DELETE'])
+def uninstall_skill(skill_id):
+    """Uninstall a skill"""
+    success = library_registry.uninstall_skill(skill_id)
+    if success:
+        return jsonify({"success": True})
+    return jsonify({"error": "Skill not installed"}), 404
+
+
+@app.route('/api/library/mcp', methods=['GET'])
+def list_available_mcp_servers():
+    """List all available MCP servers from catalog"""
+    servers = library_registry.list_available_mcp_servers()
+    return jsonify({"servers": servers})
+
+
+@app.route('/api/library/mcp/installed', methods=['GET'])
+def list_installed_mcp_servers():
+    """List installed MCP servers"""
+    servers = library_registry.get_installed_mcp_servers()
+    return jsonify({"servers": servers})
+
+
+@app.route('/api/library/mcp/<server_id>/install', methods=['POST'])
+def install_mcp_server(server_id):
+    """Install an MCP server"""
+    config_override = request.get_json() if request.is_json else {}
+    success = library_registry.install_mcp_server(server_id, config_override)
+    if success:
+        return jsonify({"success": True, "message": f"MCP server {server_id} installed. Restart required."})
+    return jsonify({"error": "Server not found in catalog"}), 404
+
+
+@app.route('/api/library/mcp/<server_id>/uninstall', methods=['DELETE'])
+def uninstall_mcp_server(server_id):
+    """Uninstall an MCP server"""
+    success = library_registry.uninstall_mcp_server(server_id)
+    if success:
+        return jsonify({"success": True})
+    return jsonify({"error": "Server not installed"}), 404
+
+
+@app.route('/api/library/mcp/<server_id>/config', methods=['PUT'])
+def update_mcp_server_config(server_id):
+    """Update MCP server configuration"""
+    config = request.get_json()
+    success = library_registry.update_mcp_server_config(server_id, config)
+    if success:
+        return jsonify({"success": True})
+    return jsonify({"error": "Server not installed"}), 404
+
+
+@app.route('/api/library/refresh', methods=['POST'])
+def refresh_library_catalog():
+    """Refresh the library catalog from remote"""
+    try:
+        catalog = library_registry.fetch_catalog()
+        return jsonify({"success": True, "catalog": catalog})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':

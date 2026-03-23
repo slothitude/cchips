@@ -204,6 +204,8 @@ class Orchestrator:
             return self._execute_zai(provider, prompt, task.timeout)
         elif provider.type == "openrouter":
             return self._execute_openrouter(provider, prompt, task.timeout)
+        elif provider.type == "nvidia":
+            return self._execute_nvidia(provider, prompt, task.timeout)
         else:
             return {"success": False, "error": f"Unsupported provider type: {provider.type}", "output": ""}
 
@@ -307,6 +309,34 @@ class Orchestrator:
                 return {"success": True, "output": output, "error": ""}
             else:
                 return {"success": False, "error": f"OpenRouter error: {response.status_code}", "output": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e), "output": ""}
+
+    def _execute_nvidia(self, provider: Provider, prompt: str, timeout: int) -> dict:
+        """Execute via NVIDIA NIM API"""
+        model = provider.default_model or "meta/llama-3.1-8b-instruct"
+
+        try:
+            response = requests.post(
+                "https://integrate.api.nvidia.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {provider.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 1024,
+                    "temperature": 0.7
+                },
+                timeout=timeout
+            )
+            if response.status_code == 200:
+                data = response.json()
+                output = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                return {"success": True, "output": output, "error": ""}
+            else:
+                return {"success": False, "error": f"NVIDIA error: {response.status_code}", "output": ""}
         except Exception as e:
             return {"success": False, "error": str(e), "output": ""}
 

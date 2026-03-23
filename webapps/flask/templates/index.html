@@ -52,9 +52,21 @@
                         <span class="nav-icon">🔌</span>
                         <span>Providers</span>
                     </a>
+                    <a href="#" class="nav-item" data-view="agents">
+                        <span class="nav-icon">🤖</span>
+                        <span>Agent Builder</span>
+                    </a>
+                    <a href="#" class="nav-item" data-view="library">
+                        <span class="nav-icon">📚</span>
+                        <span>Skills & MCP</span>
+                    </a>
                     <a href="#" class="nav-item" data-view="workflows">
                         <span class="nav-icon">⚡</span>
                         <span>Workflows</span>
+                    </a>
+                    <a href="#" class="nav-item" data-view="telegram">
+                        <span class="nav-icon">📱</span>
+                        <span>Telegram Bot</span>
                     </a>
                 </nav>
 
@@ -226,6 +238,268 @@
                         <pre class="output-content" id="detail-output">No output yet</pre>
                     </div>
                 </section>
+
+                <!-- Telegram Bot View -->
+                <section id="view-telegram" class="view">
+                    <div class="page-header">
+                        <h2>Telegram Bot</h2>
+                        <span class="status-badge" id="telegram-status">Not Configured</span>
+                    </div>
+
+                    <div class="telegram-setup">
+                        <!-- Bot Token -->
+                        <div class="form-group">
+                            <label class="form-label">Bot Token</label>
+                            <div class="input-group">
+                                <input class="form-input" type="password" id="telegram-token"
+                                       placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                                <button class="btn btn-secondary" onclick="testTelegramToken()">Test</button>
+                            </div>
+                            <p class="form-hint">Get your token from <a href="https://t.me/BotFather" target="_blank">@BotFather</a></p>
+                        </div>
+
+                        <!-- Bot Info (shown after test) -->
+                        <div id="telegram-bot-info" class="bot-info-card" style="display:none;">
+                            <span class="bot-avatar">🤖</span>
+                            <div>
+                                <div class="bot-name" id="telegram-bot-name"></div>
+                                <div class="bot-username" id="telegram-bot-username"></div>
+                            </div>
+                        </div>
+
+                        <!-- Allowed Users -->
+                        <div class="form-group">
+                            <label class="form-label">Allowed Users</label>
+                            <textarea class="form-textarea" id="telegram-users"
+                                      placeholder="Comma-separated Telegram user IDs (empty = everyone)"></textarea>
+                            <p class="form-hint">Find your ID by messaging <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></p>
+                        </div>
+
+                        <!-- Admin Users -->
+                        <div class="form-group">
+                            <label class="form-label">Admin Users</label>
+                            <textarea class="form-textarea" id="telegram-admins"
+                                      placeholder="Comma-separated Telegram user IDs with admin rights"></textarea>
+                            <p class="form-hint">Admins can manage providers and workflows</p>
+                        </div>
+
+                        <!-- Default Provider -->
+                        <div class="form-group">
+                            <label class="form-label">Default Provider</label>
+                            <select class="form-select" id="telegram-provider">
+                                <option value="">Use default agent</option>
+                            </select>
+                        </div>
+
+                        <!-- Enable Switch -->
+                        <div class="form-group">
+                            <label class="form-label checkbox-label">
+                                <input type="checkbox" id="telegram-enabled"> Enable Telegram Bot
+                            </label>
+                            <p class="form-hint">Requires container restart after saving</p>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-secondary" onclick="restartTelegramBot()">🔄 Restart Bot</button>
+                            <button class="btn btn-primary" onclick="saveTelegramConfig()">Save Configuration</button>
+                        </div>
+                    </div>
+
+                    <!-- Bot Commands Reference -->
+                    <div class="commands-reference">
+                        <h3>Available Commands</h3>
+                        <div class="commands-grid">
+                            <div class="command-item"><code>/start</code> - Show help & welcome</div>
+                            <div class="command-item"><code>/chat &lt;msg&gt;</code> - Chat with AI</div>
+                            <div class="command-item"><code>/workflow &lt;mode&gt; &lt;prompt&gt;</code> - Create workflow</div>
+                            <div class="command-item"><code>/status &lt;id&gt;</code> - Check workflow status</div>
+                            <div class="command-item"><code>/workflows</code> - List recent workflows</div>
+                            <div class="command-item"><code>/providers</code> - List providers</div>
+                            <div class="command-item"><code>/provider &lt;name&gt;</code> - Provider details</div>
+                            <div class="command-item"><code>/cancel &lt;id&gt;</code> - Cancel workflow</div>
+                        </div>
+                        <h4 style="margin-top: 1.5rem;">File Support</h4>
+                        <div class="commands-grid">
+                            <div class="command-item">📷 <strong>Photos</strong> - Send with optional caption for image analysis</div>
+                            <div class="command-item">📄 <strong>Documents</strong> - Send with optional caption for file analysis</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Agent Builder View -->
+                <section id="view-agents" class="view">
+                    <div class="page-header">
+                        <h2>Agent Builder</h2>
+                        <div class="page-actions">
+                            <button class="btn btn-secondary" onclick="showAgentTemplates()">From Template</button>
+                            <button class="btn btn-primary" onclick="openAgentModal()">+ New Agent</button>
+                        </div>
+                    </div>
+
+                    <div class="agents-grid" id="agents-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+
+                    <div id="no-agents" class="empty-state" style="display:none;">
+                        <div class="empty-icon">🤖</div>
+                        <h3>No agents yet</h3>
+                        <p>Create your first agent or start from a template</p>
+                    </div>
+                </section>
+
+                <!-- Agent Editor View -->
+                <section id="view-agent-editor" class="view">
+                    <div class="page-header">
+                        <button class="btn btn-back" onclick="showView('agents')">← Back</button>
+                        <h2 id="agent-editor-title">Edit Agent</h2>
+                        <div class="page-actions">
+                            <button class="btn btn-danger" onclick="deleteCurrentAgent()">Delete</button>
+                            <button class="btn btn-primary" onclick="saveCurrentAgent()">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="agent-editor-layout">
+                        <!-- Left: Basic Config -->
+                        <div class="editor-panel">
+                            <h3>Basic Configuration</h3>
+
+                            <div class="form-group">
+                                <label class="form-label">Agent ID</label>
+                                <input class="form-input" id="agent-id" placeholder="my-agent" readonly>
+                                <p class="form-hint">Unique identifier for this agent</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Name</label>
+                                <input class="form-input" id="agent-name" placeholder="My Agent">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-textarea" id="agent-description" rows="2"
+                                          placeholder="What does this agent do?"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Provider</label>
+                                    <select class="form-select" id="agent-provider">
+                                        <option value="">Default</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Model Override</label>
+                                    <input class="form-input" id="agent-model" placeholder="claude-sonnet-4-6">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Center: System Prompt -->
+                        <div class="editor-panel editor-panel-large">
+                            <h3>System Prompt</h3>
+                            <div class="form-group">
+                                <textarea class="form-textarea code-textarea" id="agent-system-prompt" rows="15"
+                                          placeholder="You are a helpful AI assistant that..."></textarea>
+                            </div>
+
+                            <h3>Skills</h3>
+                            <div class="skills-selector" id="agent-skills-selector">
+                                <!-- Populated from available skills -->
+                            </div>
+                        </div>
+
+                        <!-- Right: Tools & Workflow -->
+                        <div class="editor-panel">
+                            <h3>Tools</h3>
+                            <div class="tools-selector">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="tool" value="read" checked> Read files
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="tool" value="write" checked> Write files
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="tool" value="edit"> Edit files
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="tool" value="bash" checked> Run commands
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="tool" value="grep"> Search files
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="tool" value="find"> Find files
+                                </label>
+                            </div>
+
+                            <h3>Workflow Template</h3>
+                            <div class="form-group">
+                                <label class="form-label">Execution Mode</label>
+                                <select class="form-select" id="agent-workflow-mode">
+                                    <option value="parallel">Parallel</option>
+                                    <option value="sequential">Sequential</option>
+                                    <option value="dag">DAG (Dependencies)</option>
+                                </select>
+                            </div>
+
+                            <h3>Test Agent</h3>
+                            <div class="form-group">
+                                <textarea class="form-textarea" id="agent-test-prompt" rows="3"
+                                          placeholder="Enter a test prompt..."></textarea>
+                            </div>
+                            <button class="btn btn-secondary btn-block" onclick="testCurrentAgent()">▶ Test Agent</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Skills/MCP Library View -->
+                <section id="view-library" class="view">
+                    <div class="page-header">
+                        <h2>Skills & MCP Library</h2>
+                        <div class="page-actions">
+                            <button class="btn btn-secondary" onclick="refreshLibrary()">↻ Refresh</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="library-tabs">
+                        <button class="tab-btn active" onclick="switchLibraryTab('skills')">Skills</button>
+                        <button class="tab-btn" onclick="switchLibraryTab('mcp')">MCP Servers</button>
+                        <button class="tab-btn" onclick="switchLibraryTab('installed')">Installed</button>
+                    </div>
+
+                    <!-- Search -->
+                    <div class="library-search">
+                        <input class="form-input" id="library-search" placeholder="Search skills and servers..."
+                               oninput="filterLibrary(this.value)">
+                    </div>
+
+                    <!-- Skills Tab -->
+                    <div id="library-skills" class="library-tab active">
+                        <div class="library-grid" id="skills-grid">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- MCP Tab -->
+                    <div id="library-mcp" class="library-tab">
+                        <div class="library-grid" id="mcp-grid">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Installed Tab -->
+                    <div id="library-installed" class="library-tab">
+                        <div class="installed-section">
+                            <h3>Installed Skills</h3>
+                            <div class="library-grid" id="installed-skills-grid"></div>
+                        </div>
+                        <div class="installed-section">
+                            <h3>Installed MCP Servers</h3>
+                            <div class="library-grid" id="installed-mcp-grid"></div>
+                        </div>
+                    </div>
+                </section>
             </main>
         </div>
 
@@ -328,6 +602,46 @@
         </div>
     </div>
 
+    <!-- Agent Templates Modal -->
+    <div class="modal-overlay" id="modal-agent-templates">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 class="modal-title">Choose a Template</h3>
+                <button class="modal-close" onclick="closeModal('modal-agent-templates')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="templates-grid" id="templates-grid">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MCP Config Modal -->
+    <div class="modal-overlay" id="modal-mcp-config">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="mcp-config-title">Configure MCP Server</h3>
+                <button class="modal-close" onclick="closeModal('modal-mcp-config')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="mcp-config-form">
+                    <div class="form-group">
+                        <label class="form-label">Server ID</label>
+                        <input class="form-input" id="mcp-server-id" readonly>
+                    </div>
+                    <div id="mcp-config-fields">
+                        <!-- Dynamic fields based on config_template -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('modal-mcp-config')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveMcpConfig()">Install</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
@@ -382,6 +696,9 @@
             if (viewName === 'providers') loadProviders();
             if (viewName === 'workflows') loadWorkflows();
             if (viewName === 'dashboard') loadDashboard();
+            if (viewName === 'telegram') loadTelegramConfig();
+            if (viewName === 'agents') loadAgents();
+            if (viewName === 'library') loadLibrary();
         }
 
         // ============== DASHBOARD ==============
@@ -1079,6 +1396,839 @@
                 toast.classList.add('toast-exit');
                 setTimeout(() => toast.remove(), 300);
             }, 4000);
+        }
+
+        // ============== TELEGRAM BOT ==============
+        async function loadTelegramConfig() {
+            try {
+                // Load providers for dropdown
+                const providersRes = await fetch('/api/registry/providers');
+                const providersData = await providersRes.json();
+                const providerSelect = document.getElementById('telegram-provider');
+
+                providerSelect.innerHTML = '<option value="">Use default agent</option>';
+                Object.keys(providersData.providers || {}).forEach(name => {
+                    providerSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+
+                // Load existing Telegram config
+                const res = await fetch('/api/telegram/config');
+                const data = await res.json();
+
+                if (data.config) {
+                    const cfg = data.config;
+
+                    if (cfg.token_masked) {
+                        document.getElementById('telegram-token').placeholder = cfg.token_masked;
+                    }
+
+                    if (cfg.allowed_users && cfg.allowed_users.length > 0) {
+                        document.getElementById('telegram-users').value = cfg.allowed_users.join(', ');
+                    }
+
+                    if (cfg.admin_users && cfg.admin_users.length > 0) {
+                        document.getElementById('telegram-admins').value = cfg.admin_users.join(', ');
+                    }
+
+                    if (cfg.default_provider) {
+                        document.getElementById('telegram-provider').value = cfg.default_provider;
+                    }
+
+                    document.getElementById('telegram-enabled').checked = cfg.enabled || false;
+                }
+
+                // Update status badge
+                const statusRes = await fetch('/api/telegram/status');
+                const status = await statusRes.json();
+                const badge = document.getElementById('telegram-status');
+
+                if (status.enabled) {
+                    badge.textContent = 'Running';
+                    badge.style.background = 'var(--success)';
+                } else if (status.configured) {
+                    badge.textContent = 'Configured (Disabled)';
+                    badge.style.background = 'var(--warning)';
+                } else {
+                    badge.textContent = 'Not Configured';
+                    badge.style.background = 'var(--text-muted)';
+                }
+            } catch (error) {
+                console.error('Failed to load Telegram config:', error);
+            }
+        }
+
+        async function testTelegramToken() {
+            const token = document.getElementById('telegram-token').value;
+
+            if (!token) {
+                showToast('Please enter a bot token', 'error');
+                return;
+            }
+
+            showToast('Testing token...', 'info');
+
+            try {
+                const res = await fetch('/api/telegram/test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ token })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast(`Bot connected: @${result.bot_username}`, 'success');
+
+                    // Show bot info card
+                    const infoCard = document.getElementById('telegram-bot-info');
+                    infoCard.style.display = 'flex';
+                    document.getElementById('telegram-bot-name').textContent = result.bot_name;
+                    document.getElementById('telegram-bot-username').textContent = '@' + result.bot_username;
+                } else {
+                    showToast('Token test failed: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Test failed: ' + error.message, 'error');
+            }
+        }
+
+        async function saveTelegramConfig() {
+            const token = document.getElementById('telegram-token').value;
+            const usersStr = document.getElementById('telegram-users').value;
+            const adminsStr = document.getElementById('telegram-admins').value;
+            const provider = document.getElementById('telegram-provider').value;
+            const enabled = document.getElementById('telegram-enabled').checked;
+
+            // Parse user IDs
+            const allowedUsers = usersStr
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s && !isNaN(s))
+                .map(s => parseInt(s));
+
+            const adminUsers = adminsStr
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s && !isNaN(s))
+                .map(s => parseInt(s));
+
+            const payload = {
+                enabled
+            };
+
+            if (token) {
+                payload.token = token;
+            }
+
+            if (allowedUsers.length > 0) {
+                payload.allowed_users = allowedUsers;
+            }
+
+            if (adminUsers.length > 0) {
+                payload.admin_users = adminUsers;
+            }
+
+            if (provider) {
+                payload.default_provider = provider;
+            }
+
+            showToast('Saving configuration...', 'info');
+
+            try {
+                const res = await fetch('/api/telegram/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast('Configuration saved! Click "Restart Bot" to apply.', 'success');
+
+                    // Update status badge
+                    const badge = document.getElementById('telegram-status');
+                    if (enabled && (token || result.configured)) {
+                        badge.textContent = 'Configured (Restart Required)';
+                        badge.style.background = 'var(--warning)';
+                    } else {
+                        badge.textContent = 'Saved (Disabled)';
+                        badge.style.background = 'var(--text-muted)';
+                    }
+                } else {
+                    showToast('Failed to save: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Save failed: ' + error.message, 'error');
+            }
+        }
+
+        async function restartTelegramBot() {
+            showToast('Restarting bot...', 'info');
+
+            try {
+                const res = await fetch('/api/telegram/restart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast('Telegram bot restarted!', 'success');
+                    document.getElementById('telegram-status').textContent = 'Running';
+                    document.getElementById('telegram-status').style.background = 'var(--success)';
+                } else {
+                    showToast('Restart failed: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Restart failed: ' + error.message, 'error');
+            }
+        }
+
+        // ============== AGENT BUILDER ==============
+        let CurrentAgent = null;
+
+        async function loadAgents() {
+            try {
+                const res = await fetch('/api/agents');
+                const data = await res.json();
+                AppState.agents = data.agents || [];
+
+                const list = document.getElementById('agents-list');
+                const empty = document.getElementById('no-agents');
+
+                if (AppState.agents.length === 0) {
+                    list.innerHTML = '';
+                    empty.style.display = 'flex';
+                    return;
+                }
+
+                empty.style.display = 'none';
+                list.innerHTML = AppState.agents.map(agent => `
+                    <div class="agent-card" onclick="editAgent('${agent.id}')">
+                        <div class="agent-card-header">
+                            <div class="agent-avatar">${agent.name[0].toUpperCase()}</div>
+                            <div>
+                                <div class="agent-name">${agent.name}</div>
+                                <div class="agent-id">${agent.id}</div>
+                            </div>
+                        </div>
+                        <p class="agent-description">${agent.description || 'No description'}</p>
+                        <div class="agent-meta">
+                            <span class="agent-provider">${agent.provider || 'Default'}</span>
+                            <span class="agent-skills">${agent.skills?.length || 0} skills</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showToast('Failed to load agents: ' + error.message, 'error');
+            }
+        }
+
+        async function showAgentTemplates() {
+            try {
+                const res = await fetch('/api/agents/templates');
+                const data = await res.json();
+                const templates = data.templates || [];
+
+                const grid = document.getElementById('templates-grid');
+                grid.innerHTML = templates.map(t => `
+                    <div class="template-card" onclick="createFromTemplate('${t.id}')">
+                        <div class="template-icon">🤖</div>
+                        <div class="template-name">${t.name}</div>
+                        <div class="template-desc">${t.description}</div>
+                        <div class="template-tools">
+                            ${(t.tools || []).map(tool => `<span class="tool-tag">${tool}</span>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+
+                showModal('modal-agent-templates');
+            } catch (error) {
+                showToast('Failed to load templates: ' + error.message, 'error');
+            }
+        }
+
+        async function createFromTemplate(templateId) {
+            try {
+                const res = await fetch('/api/agents/templates');
+                const data = await res.json();
+                const template = data.templates?.find(t => t.id === templateId);
+
+                if (!template) {
+                    showToast('Template not found', 'error');
+                    return;
+                }
+
+                // Create agent from template
+                const createRes = await fetch('/api/agents', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        ...template,
+                        id: template.id + '-' + Date.now().toString(36)
+                    })
+                });
+
+                const result = await createRes.json();
+                if (result.success) {
+                    closeModal('modal-agent-templates');
+                    editAgent(result.agent.id);
+                    showToast('Agent created from template', 'success');
+                }
+            } catch (error) {
+                showToast('Failed to create agent: ' + error.message, 'error');
+            }
+        }
+
+        function openAgentModal() {
+            CurrentAgent = null;
+            document.getElementById('agent-id').value = '';
+            document.getElementById('agent-name').value = '';
+            document.getElementById('agent-description').value = '';
+            document.getElementById('agent-system-prompt').value = '';
+            document.getElementById('agent-provider').value = '';
+            document.getElementById('agent-model').value = '';
+
+            document.querySelectorAll('.tools-selector input').forEach(cb => {
+                cb.checked = ['read', 'write', 'bash'].includes(cb.value);
+            });
+
+            document.getElementById('agent-editor-title').textContent = 'New Agent';
+            showView('agent-editor');
+            loadSkillsSelector();
+            loadProvidersForAgent();
+        }
+
+        async function loadProvidersForAgent() {
+            try {
+                const res = await fetch('/api/registry/providers');
+                const data = await res.json();
+                const select = document.getElementById('agent-provider');
+
+                select.innerHTML = '<option value="">Default</option>';
+                Object.keys(data.providers || {}).forEach(name => {
+                    select.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+            } catch (error) {
+                console.error('Failed to load providers:', error);
+            }
+        }
+
+        async function editAgent(agentId) {
+            try {
+                const res = await fetch(`/api/agents/${agentId}`);
+                const agent = await res.json();
+
+                if (agent.error) {
+                    showToast('Agent not found', 'error');
+                    return;
+                }
+
+                CurrentAgent = agent;
+
+                document.getElementById('agent-id').value = agent.id;
+                document.getElementById('agent-name').value = agent.name;
+                document.getElementById('agent-description').value = agent.description || '';
+                document.getElementById('agent-system-prompt').value = agent.system_prompt || '';
+                document.getElementById('agent-provider').value = agent.provider || '';
+                document.getElementById('agent-model').value = agent.model || '';
+                document.getElementById('agent-workflow-mode').value = agent.workflow_template?.mode || 'parallel';
+
+                document.querySelectorAll('.tools-selector input').forEach(cb => {
+                    cb.checked = (agent.tools || ['read', 'write', 'bash']).includes(cb.value);
+                });
+
+                document.getElementById('agent-editor-title').textContent = `Edit: ${agent.name}`;
+                showView('agent-editor');
+                loadSkillsSelector(agent.skills || []);
+                loadProvidersForAgent();
+            } catch (error) {
+                showToast('Failed to load agent: ' + error.message, 'error');
+            }
+        }
+
+        async function loadSkillsSelector(selectedSkills = []) {
+            try {
+                const res = await fetch('/api/skills');
+                const data = await res.json();
+                const allSkills = [...(data.builtin || []), ...(data.skills || [])];
+
+                const container = document.getElementById('agent-skills-selector');
+                container.innerHTML = allSkills.map(skill => `
+                    <label class="skill-checkbox">
+                        <input type="checkbox" name="skill" value="${skill.id}"
+                               ${selectedSkills.includes(skill.id) ? 'checked' : ''}>
+                        <span class="skill-name">${skill.name}</span>
+                        <span class="skill-desc">${skill.description}</span>
+                    </label>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load skills:', error);
+            }
+        }
+
+        async function saveCurrentAgent() {
+            const tools = Array.from(document.querySelectorAll('.tools-selector input:checked'))
+                .map(cb => cb.value);
+
+            const skills = Array.from(document.querySelectorAll('#agent-skills-selector input:checked'))
+                .map(cb => cb.value);
+
+            const data = {
+                name: document.getElementById('agent-name').value,
+                description: document.getElementById('agent-description').value,
+                system_prompt: document.getElementById('agent-system-prompt').value,
+                provider: document.getElementById('agent-provider').value || null,
+                model: document.getElementById('agent-model').value || null,
+                tools: tools,
+                skills: skills,
+                workflow_template: {
+                    mode: document.getElementById('agent-workflow-mode').value
+                }
+            };
+
+            try {
+                const agentId = document.getElementById('agent-id').value;
+                const url = agentId ? `/api/agents/${agentId}` : '/api/agents';
+                const method = agentId ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    showToast('Agent saved!', 'success');
+                    if (!agentId) {
+                        document.getElementById('agent-id').value = result.agent.id;
+                        CurrentAgent = result.agent;
+                    }
+                    loadAgents();
+                } else {
+                    showToast(result.error || 'Failed to save', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteCurrentAgent() {
+            const agentId = document.getElementById('agent-id').value;
+            if (!agentId) return;
+
+            if (!confirm('Delete this agent?')) return;
+
+            try {
+                const res = await fetch(`/api/agents/${agentId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Agent deleted', 'success');
+                    showView('agents');
+                    loadAgents();
+                }
+            } catch (error) {
+                showToast('Failed to delete: ' + error.message, 'error');
+            }
+        }
+
+        async function testCurrentAgent() {
+            const agentId = document.getElementById('agent-id').value;
+            const prompt = document.getElementById('agent-test-prompt').value;
+
+            if (!agentId) {
+                showToast('Save the agent first', 'warning');
+                return;
+            }
+
+            if (!prompt.trim()) {
+                showToast('Enter a test prompt', 'warning');
+                return;
+            }
+
+            showToast('Running agent test...', 'info');
+
+            try {
+                const res = await fetch(`/api/agents/${agentId}/execute`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ prompt })
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    showToast(`Test started! Workflow: ${result.workflow_id}`, 'success');
+                    showWorkflowDetail(result.workflow_id);
+                } else {
+                    showToast(result.error || 'Test failed', 'error');
+                }
+            } catch (error) {
+                showToast('Test error: ' + error.message, 'error');
+            }
+        }
+
+        // ============== SKILLS/MCP LIBRARY ==============
+        let LibraryState = {
+            skills: [],
+            mcpServers: [],
+            installedSkills: [],
+            installedMcp: [],
+            currentTab: 'skills'
+        };
+
+        async function loadLibrary() {
+            await Promise.all([
+                loadAvailableSkills(),
+                loadAvailableMcpServers(),
+                loadInstalledItems()
+            ]);
+        }
+
+        async function loadAvailableSkills() {
+            try {
+                const res = await fetch('/api/library/skills');
+                const data = await res.json();
+                LibraryState.skills = data.skills || [];
+                renderSkillsGrid();
+            } catch (error) {
+                showToast('Failed to load skills: ' + error.message, 'error');
+            }
+        }
+
+        async function loadAvailableMcpServers() {
+            try {
+                const res = await fetch('/api/library/mcp');
+                const data = await res.json();
+                LibraryState.mcpServers = data.servers || [];
+                renderMcpGrid();
+            } catch (error) {
+                showToast('Failed to load MCP servers: ' + error.message, 'error');
+            }
+        }
+
+        async function loadInstalledItems() {
+            try {
+                const [skillsRes, mcpRes] = await Promise.all([
+                    fetch('/api/library/skills/installed'),
+                    fetch('/api/library/mcp/installed')
+                ]);
+
+                const skillsData = await skillsRes.json();
+                const mcpData = await mcpRes.json();
+
+                LibraryState.installedSkills = skillsData.skills || [];
+                LibraryState.installedMcp = mcpData.servers || [];
+
+                renderInstalledGrid();
+            } catch (error) {
+                console.error('Failed to load installed items:', error);
+            }
+        }
+
+        function renderSkillsGrid() {
+            const grid = document.getElementById('skills-grid');
+            if (!grid) return;
+
+            grid.innerHTML = LibraryState.skills.map(skill => `
+                <div class="library-card ${skill.installed ? 'installed' : ''}">
+                    <div class="library-card-header">
+                        <span class="library-card-icon">⚡</span>
+                        <div>
+                            <div class="library-card-name">${skill.name}</div>
+                            <div class="library-card-id">${skill.id}</div>
+                        </div>
+                    </div>
+                    <p class="library-card-desc">${skill.description}</p>
+                    <div class="library-card-meta">
+                        <span class="library-card-category">${skill.category || 'general'}</span>
+                        <div class="library-card-tags">
+                            ${(skill.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="library-card-actions">
+                        ${skill.installed
+                            ? `<button class="btn btn-ghost" onclick="viewSkillDetail('${skill.id}')">View</button>
+                               <button class="btn btn-danger btn-sm" onclick="uninstallSkill('${skill.id}')">Uninstall</button>`
+                            : `<button class="btn btn-primary btn-sm" onclick="installSkill('${skill.id}')">Install</button>`
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderMcpGrid() {
+            const grid = document.getElementById('mcp-grid');
+            if (!grid) return;
+
+            grid.innerHTML = LibraryState.mcpServers.map(server => `
+                <div class="library-card ${server.installed ? 'installed' : ''}">
+                    <div class="library-card-header">
+                        <span class="library-card-icon">🔌</span>
+                        <div>
+                            <div class="library-card-name">${server.name}</div>
+                            <div class="library-card-id">${server.id}</div>
+                        </div>
+                    </div>
+                    <p class="library-card-desc">${server.description}</p>
+                    <div class="library-card-meta">
+                        <span class="library-card-category">${server.category || 'general'}</span>
+                        <div class="library-card-tags">
+                            ${(server.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="library-card-actions">
+                        ${server.installed
+                            ? `<button class="btn btn-ghost" onclick="viewMcpConfig('${server.id}')">Configure</button>
+                               <button class="btn btn-danger btn-sm" onclick="uninstallMcpServer('${server.id}')">Uninstall</button>`
+                            : `<button class="btn btn-primary btn-sm" onclick="openMcpInstallModal('${server.id}')">Install</button>`
+                        }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderInstalledGrid() {
+            // Installed skills
+            const skillsGrid = document.getElementById('installed-skills-grid');
+            if (skillsGrid) {
+                if (LibraryState.installedSkills.length === 0) {
+                    skillsGrid.innerHTML = '<p class="empty-message">No skills installed</p>';
+                } else {
+                    skillsGrid.innerHTML = LibraryState.installedSkills.map(skill => `
+                        <div class="library-card installed">
+                            <div class="library-card-header">
+                                <span class="library-card-icon">⚡</span>
+                                <div>
+                                    <div class="library-card-name">${skill.name}</div>
+                                    <div class="library-card-id">${skill.id}</div>
+                                </div>
+                            </div>
+                            <p class="library-card-desc">${skill.description || ''}</p>
+                            <div class="library-card-actions">
+                                <button class="btn btn-danger btn-sm" onclick="uninstallSkill('${skill.id}')">Uninstall</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // Installed MCP servers
+            const mcpGrid = document.getElementById('installed-mcp-grid');
+            if (mcpGrid) {
+                if (LibraryState.installedMcp.length === 0) {
+                    mcpGrid.innerHTML = '<p class="empty-message">No MCP servers installed</p>';
+                } else {
+                    mcpGrid.innerHTML = LibraryState.installedMcp.map(server => `
+                        <div class="library-card installed">
+                            <div class="library-card-header">
+                                <span class="library-card-icon">🔌</span>
+                                <div>
+                                    <div class="library-card-name">${server.id}</div>
+                                    <div class="library-card-id">v${server.config?.version || 'unknown'}</div>
+                                </div>
+                            </div>
+                            <div class="library-card-actions">
+                                <button class="btn btn-ghost" onclick="viewMcpConfig('${server.id}')">Configure</button>
+                                <button class="btn btn-danger btn-sm" onclick="uninstallMcpServer('${server.id}')">Uninstall</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        function switchLibraryTab(tab) {
+            LibraryState.currentTab = tab;
+
+            document.querySelectorAll('.library-tabs .tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.library-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            document.getElementById(`library-${tab}`).classList.add('active');
+        }
+
+        async function installSkill(skillId) {
+            showToast(`Installing skill ${skillId}...`, 'info');
+
+            try {
+                const res = await fetch(`/api/library/skills/${skillId}/install`, { method: 'POST' });
+                const result = await res.json();
+
+                if (result.success) {
+                    showToast(`Skill ${skillId} installed!`, 'success');
+                    await loadLibrary();
+                } else {
+                    showToast(result.error || 'Install failed', 'error');
+                }
+            } catch (error) {
+                showToast('Install error: ' + error.message, 'error');
+            }
+        }
+
+        async function uninstallSkill(skillId) {
+            if (!confirm(`Uninstall skill "${skillId}"?`)) return;
+
+            try {
+                const res = await fetch(`/api/library/skills/${skillId}/uninstall`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast(`Skill ${skillId} uninstalled`, 'success');
+                    await loadLibrary();
+                }
+            } catch (error) {
+                showToast('Uninstall error: ' + error.message, 'error');
+            }
+        }
+
+        function openMcpInstallModal(serverId) {
+            const server = LibraryState.mcpServers.find(s => s.id === serverId);
+            if (!server) return;
+
+            document.getElementById('mcp-server-id').value = serverId;
+            document.getElementById('mcp-config-title').textContent = `Install ${server.name}`;
+
+            // Generate config fields from template
+            const fieldsContainer = document.getElementById('mcp-config-fields');
+            const template = server.config_template || {};
+
+            let fieldsHtml = '';
+
+            // Command and args
+            fieldsHtml += `
+                <div class="form-group">
+                    <label class="form-label">Command</label>
+                    <input class="form-input" name="command" value="${template.command || 'npx'}">
+                </div>
+            `;
+
+            if (template.args) {
+                fieldsHtml += `
+                    <div class="form-group">
+                        <label class="form-label">Arguments</label>
+                        <input class="form-input" name="args" value="${template.args.join(' ')}">
+                        <p class="form-hint">Space-separated arguments</p>
+                    </div>
+                `;
+            }
+
+            // Environment variables
+            if (template.env && Object.keys(template.env).length > 0) {
+                fieldsHtml += '<div class="form-group"><label class="form-label">Environment Variables</label>';
+                for (const [key, value] of Object.entries(template.env)) {
+                    const inputType = key.includes('TOKEN') || key.includes('KEY') || key.includes('SECRET') ? 'password' : 'text';
+                    fieldsHtml += `
+                        <div class="env-field">
+                            <label>${key}</label>
+                            <input class="form-input" name="env_${key}" type="${inputType}"
+                                   value="${value}" placeholder="${key}">
+                        </div>
+                    `;
+                }
+                fieldsHtml += '</div>';
+            }
+
+            fieldsContainer.innerHTML = fieldsHtml;
+
+            // Store server data for later
+            document.getElementById('mcp-config-form').dataset.serverData = JSON.stringify(server);
+
+            showModal('modal-mcp-config');
+        }
+
+        async function saveMcpConfig() {
+            const form = document.getElementById('mcp-config-form');
+            const serverId = document.getElementById('mcp-server-id').value;
+            const formData = new FormData(form);
+
+            const config = {
+                command: formData.get('command') || 'npx',
+                args: formData.get('args') ? formData.get('args').split(' ') : [],
+                env: {}
+            };
+
+            // Collect env vars
+            for (const [key, value] of formData.entries()) {
+                if (key.startsWith('env_')) {
+                    config.env[key.substring(4)] = value;
+                }
+            }
+
+            showToast(`Installing ${serverId}...`, 'info');
+
+            try {
+                const res = await fetch(`/api/library/mcp/${serverId}/install`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    showToast(`${serverId} installed! Restart may be required.`, 'success');
+                    closeModal('modal-mcp-config');
+                    await loadLibrary();
+                } else {
+                    showToast(result.error || 'Install failed', 'error');
+                }
+            } catch (error) {
+                showToast('Install error: ' + error.message, 'error');
+            }
+        }
+
+        async function uninstallMcpServer(serverId) {
+            if (!confirm(`Uninstall MCP server "${serverId}"?`)) return;
+
+            try {
+                const res = await fetch(`/api/library/mcp/${serverId}/uninstall`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast(`MCP server ${serverId} uninstalled`, 'success');
+                    await loadLibrary();
+                }
+            } catch (error) {
+                showToast('Uninstall error: ' + error.message, 'error');
+            }
+        }
+
+        async function refreshLibrary() {
+            showToast('Refreshing library catalog...', 'info');
+
+            try {
+                const res = await fetch('/api/library/refresh', { method: 'POST' });
+                if (res.ok) {
+                    await loadLibrary();
+                    showToast('Library refreshed!', 'success');
+                }
+            } catch (error) {
+                showToast('Refresh error: ' + error.message, 'error');
+            }
+        }
+
+        function filterLibrary(query) {
+            query = query.toLowerCase();
+
+            // Filter skills
+            const skillCards = document.querySelectorAll('#skills-grid .library-card');
+            skillCards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(query) ? '' : 'none';
+            });
+
+            // Filter MCP servers
+            const mcpCards = document.querySelectorAll('#mcp-grid .library-card');
+            mcpCards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        function viewSkillDetail(skillId) {
+            showToast(`Viewing skill: ${skillId}`, 'info');
+        }
+
+        function viewMcpConfig(serverId) {
+            openMcpInstallModal(serverId);
         }
     </script>
 </body>
