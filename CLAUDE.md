@@ -8,30 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CChips - Docker container deployment for Claude Code Agent. A self-contained environment that provides Claude Code CLI with OpenAI-compatible API wrapper, web terminal access, and multiple MCP servers.
 
-## Your Capabilities
-
-As Claude Code running in CChips, you have access to:
-
-### 🔍 Web Search
-- **SearXNG**: `http://localhost:8888/search?q=query&format=json` or through nginx at `/search/`
-- **MCP**: Use `searxng` or `brave-search` MCP servers
-
-### 📁 File Access
-- **Direct**: Read/write to `/home/claude/projects/`
-- **MCP**: Use `filesystem` MCP server for file operations
-- **External**: SSH (port 22) or Samba (`\\localhost\projects`)
-
-### 🤖 Self-Reference
-- **MCP**: Use `claude-agent-self` to call yourself as a sub-agent
-- **API**: POST to `http://localhost:5001/v1/agent/execute`
-
-### 🔌 MCP Servers
-- `filesystem` - File operations
-- `github` - GitHub API (set GITHUB_TOKEN)
-- `searxng` - Local web search
-- `memory` - Persistent storage
-- `claude-agent-self` - Recursive agent calls
-
 ## Commands
 
 ```bash
@@ -56,11 +32,22 @@ PORT=8002 docker-compose -p claude2 up -d
 
 ### Single Port Design
 All services are proxied through nginx on port 80:
-- `/` - Flask onboarding UI (port 5000)
+- `/` - Flask dashboard UI (port 5000)
 - `/v1/` - Claude Code OpenAI Wrapper (port 8000)
 - `/agent/` - Headless Agent API (port 5001)
 - `/search/` - SearXNG (separate container, port 8888)
 - `/ttyd/` - Web terminal with auto-login (port 7682)
+
+### Flask Application Structure (`webapps/flask/`)
+
+| File | Purpose |
+|------|---------|
+| `app.py` | Main Flask app - Dashboard UI, providers, workflows, agent builder, library APIs |
+| `agent_api.py` | Headless Agent API - `/v1/agent/execute`, task management |
+| `orchestrator.py` | Multi-agent workflow engine - parallel, sequential, DAG execution |
+| `agents.py` | Agent registry - CRUD for custom agents with skills |
+| `library.py` | Skills/MCP library - install/uninstall skills and MCP servers |
+| `telegram_bot.py` | Optional Telegram bot integration |
 
 ### Key Components
 
@@ -70,22 +57,20 @@ All services are proxied through nginx on port 80:
 3. Nginx reverse proxy
 4. ttyd web terminal (auto-login via sshpass)
 5. Claude Code OpenAI Wrapper (Poetry/uvicorn)
-6. Flask onboarding wizard
+6. Flask dashboard
 7. Headless Agent API
+8. Telegram bot (if configured)
 
 **nginx-default.conf** - Routes requests to internal services. Long timeouts (600s) for `/v1/` due to LLM response times.
-
-**Dockerfile** - Ubuntu 24.04 base with:
-- Node.js 20 + Claude Code CLI
-- Python 3 + MCP SDK
-- Poetry for wrapper dependencies
-- ttyd + sshpass for web terminal
 
 ### Configuration Files
 
 - `~/.claude/settings.json` - Claude Code config (API keys, model defaults)
 - `~/.claude/wrapper.env` - Environment for OpenAI wrapper
 - `~/.claude/mcp-servers.json` - MCP server definitions
+- `~/.claude/agents/` - Custom agent configurations
+- `~/.claude/skills/` - Installed skill packages
+- `~/.claude/providers.json` - Provider registry
 
 ### Volume Mounts
 
@@ -104,15 +89,21 @@ curl -X POST http://localhost/v1/chat/completions \
 - `POST /v1/agent/execute` - Run Claude Code command
 - `GET /v1/agent/status` - Check configuration status
 
-## Provider Configuration
+### Orchestration API (`/api/orchestrate`)
+- `POST /api/orchestrate` - Create workflow (parallel/sequential/dag)
+- `GET /api/orchestrate/<id>` - Get workflow status
+- `GET /api/orchestrate/<id>/stream` - SSE real-time updates
 
-Providers are configured via Flask UI or by setting environment variables in docker-compose.yml:
-- `anthropic` - Direct Anthropic API
-- `zai` - Z.AI/GLM Coding Plan
-- `bedrock` - AWS Bedrock
-- `vertex` - Google Vertex AI
-- `openrouter` - OpenRouter
-- `ollama` - Local Ollama
+### Agent Builder API (`/api/agents`)
+- `GET/POST /api/agents` - List/create agents
+- `GET/PUT/DELETE /api/agents/<id>` - Agent CRUD
+- `POST /api/agents/<id>/execute` - Execute agent task
+
+### Library API (`/api/library`)
+- `GET /api/library/skills` - List available skills
+- `POST /api/library/skills/<id>/install` - Install skill
+- `GET /api/library/mcp` - List available MCP servers
+- `POST /api/library/mcp/<id>/install` - Install MCP server
 
 ## MCP Servers
 
